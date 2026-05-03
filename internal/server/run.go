@@ -3,7 +3,7 @@ package server
 import (
 	"github.com/devmin8/rivet/internal/logger"
 	"github.com/devmin8/rivet/internal/server/config"
-	"github.com/gofiber/fiber/v3"
+	"github.com/devmin8/rivet/internal/server/web"
 )
 
 func Run() error {
@@ -15,12 +15,5 @@ func Run() error {
 		return err
 	}
 
-	// Fiber server setup
-	app := fiber.New()
-
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
-
-	return app.Listen(":" + cfg.Port)
+	return web.NewServer(cfg, logger)
 }
