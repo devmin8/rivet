@@ -1,0 +1,10 @@
+# Environment variables
+.env
+.env.local
+
+# OS files
+.DS_Store
+
+# SQLite databases
+*db*
+*.db
