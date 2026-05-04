@@ -9,7 +9,12 @@ import (
 
 func registerCustom(v *validator.Validate) {
 	v.RegisterValidation("domain_or_url", domainOrURL)
+	v.RegisterValidation("notblank", notBlank)
 	v.RegisterValidation("username", username)
+}
+
+func notBlank(fl validator.FieldLevel) bool {
+	return strings.TrimSpace(fl.Field().String()) != ""
 }
 
 func domainOrURL(fl validator.FieldLevel) bool {

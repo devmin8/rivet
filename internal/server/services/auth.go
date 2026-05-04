@@ -21,6 +21,7 @@ import (
 
 var ErrUserAlreadyExists = errors.New("user already exists")
 var ErrInvalidCredentials = errors.New("invalid credentials")
+var ErrInvalidSession = errors.New("invalid session")
 
 type AuthService struct {
 	db  *gorm.DB
@@ -109,6 +110,41 @@ func (s *AuthService) SignInUser(username string, password string) (*SignInResul
 		User:         &user,
 		SessionToken: sessionToken,
 	}, nil
+}
+
+func (s *AuthService) UserFromSessionToken(token string) (*database.User, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, ErrInvalidSession
+	}
+
+	var session database.Session
+	if err := s.db.Where("id = ? AND expiry_date > ?", sessionIDFromToken(token), time.Now().UTC()).First(&session).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidSession
+		}
+		return nil, err
+	}
+
+	var data sessionData
+	if err := json.Unmarshal([]byte(session.Data), &data); err != nil {
+		return nil, ErrInvalidSession
+	}
+	if data.UserID == "" {
+		return nil, ErrInvalidSession
+	}
+
+	var user database.User
+	if err := s.db.Where("id = ?", data.UserID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidSession
+		}
+		return nil, err
+	}
+	if !user.IsActive {
+		return nil, ErrInvalidSession
+	}
+
+	return &user, nil
 }
 
 const (
