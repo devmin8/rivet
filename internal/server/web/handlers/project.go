@@ -30,7 +30,6 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 	project, err := h.projectService.CreateProject(services.CreateProjectRequest{
 		Name:        req.Name,
 		Domain:      req.Domain,
-		Tag:         req.Tag,
 		Description: req.Description,
 		Port:        req.Port,
 		Image:       req.Image,

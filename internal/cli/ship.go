@@ -67,11 +67,6 @@ func promptCreateProject(cmd *cobra.Command) (dtos.CreateProjectRequest, error) 
 		return dtos.CreateProjectRequest{}, err
 	}
 
-	tag, err := prompt.RequiredString(cmd.InOrStdin(), cmd.OutOrStdout(), "Tag: ")
-	if err != nil {
-		return dtos.CreateProjectRequest{}, err
-	}
-
 	port, err := prompt.Port(cmd.InOrStdin(), cmd.OutOrStdout(), "Port: ")
 	if err != nil {
 		return dtos.CreateProjectRequest{}, err
@@ -85,7 +80,6 @@ func promptCreateProject(cmd *cobra.Command) (dtos.CreateProjectRequest, error) 
 	return dtos.CreateProjectRequest{
 		Name:        name,
 		Domain:      domain,
-		Tag:         tag,
 		Port:        port,
 		Description: description,
 	}, nil

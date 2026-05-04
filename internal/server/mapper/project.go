@@ -10,7 +10,6 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 		ID:           project.ID,
 		Name:         project.Name,
 		Domain:       project.Domain,
-		Tag:          project.Tag,
 		Description:  project.Description,
 		Port:         project.Port,
 		Image:        project.Image,

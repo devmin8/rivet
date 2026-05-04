@@ -15,7 +15,6 @@ type ProjectService struct {
 type CreateProjectRequest struct {
 	Name        string
 	Domain      string
-	Tag         string
 	Description string
 	Port        uint32
 	Image       string
@@ -30,7 +29,6 @@ func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Proj
 	project := &database.Project{
 		Name:        strings.TrimSpace(req.Name),
 		Domain:      strings.TrimSpace(req.Domain),
-		Tag:         strings.TrimSpace(req.Tag),
 		Description: strings.TrimSpace(req.Description),
 		Port:        strconv.FormatUint(uint64(req.Port), 10),
 		Image:       strings.TrimSpace(req.Image),

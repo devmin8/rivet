@@ -53,7 +53,6 @@ type Project struct {
 	ID           string     `gorm:"primaryKey;type:text"`
 	Name         string     `gorm:"size:255;not null;uniqueIndex"`
 	Domain       string     `gorm:"size:255;not null;uniqueIndex"`
-	Tag          string     `gorm:"type:text;not null"`
 	Description  string     `gorm:"type:text"`
 	Port         string     `gorm:"size:16;not null"`
 	Image        string     `gorm:"type:text"`

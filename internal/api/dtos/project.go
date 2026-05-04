@@ -5,7 +5,6 @@ import "time"
 type CreateProjectRequest struct {
 	Name        string `json:"name" validate:"required,notblank,max=255"`
 	Domain      string `json:"domain" validate:"required,domain_or_url,max=255"`
-	Tag         string `json:"tag" validate:"required,notblank,max=255"`
 	Description string `json:"description" validate:"max=2048"`
 	Port        uint32 `json:"port" validate:"required,port"`
 	Image       string `json:"image" validate:"max=2048"`
@@ -15,7 +14,6 @@ type CreateProjectResponse struct {
 	ID           string     `json:"id"`
 	Name         string     `json:"name"`
 	Domain       string     `json:"domain"`
-	Tag          string     `json:"tag"`
 	Description  string     `json:"description"`
 	Port         string     `json:"port"`
 	Image        string     `json:"image"`
