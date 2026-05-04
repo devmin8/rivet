@@ -63,12 +63,18 @@ func (s *AuthService) SignInUser(username string, password string) (*SignInResul
 	normalizedUsername := strings.ToLower(strings.TrimSpace(username))
 	if err := s.db.Where("username = ?", normalizedUsername).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if err := verifyDummyPassword(password); err != nil {
+				return nil, err
+			}
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
 	}
 
 	if !user.IsActive {
+		if err := verifyDummyPassword(password); err != nil {
+			return nil, err
+		}
 		return nil, ErrInvalidCredentials
 	}
 
@@ -115,6 +121,18 @@ const (
 	sessionLen    = 32
 )
 
+// dummyPasswordHash is used when the username does not exist or the account is
+// inactive, so those failures still do Argon2 work before returning. Without
+// this, signin would have a "quick exit" timing difference that can leak which
+// usernames are valid.
+//
+// OWASP calls out this exact authentication response timing discrepancy:
+// https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-responses
+var dummyPasswordHash = encodePasswordHash(
+	[]byte("rivet-dummy-password-for-signin-timing"),
+	[]byte("rivet dummy salt"),
+)
+
 type sessionData struct {
 	UserID string `json:"user_id"`
 }
@@ -134,8 +152,19 @@ func hashPassword(password string) (string, error) {
 	encodedSalt := base64.RawStdEncoding.EncodeToString(salt)
 	encodedKey := base64.RawStdEncoding.EncodeToString(key)
 
+	return encodePasswordHashWithKey(encodedSalt, encodedKey), nil
+}
+
+func encodePasswordHash(password []byte, salt []byte) string {
+	key := argon2.IDKey(password, salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
+	encodedSalt := base64.RawStdEncoding.EncodeToString(salt)
+	encodedKey := base64.RawStdEncoding.EncodeToString(key)
+	return encodePasswordHashWithKey(encodedSalt, encodedKey)
+}
+
+func encodePasswordHashWithKey(encodedSalt string, encodedKey string) string {
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
-		argon2Memory, argon2Time, argon2Threads, encodedSalt, encodedKey), nil
+		argon2Memory, argon2Time, argon2Threads, encodedSalt, encodedKey)
 }
 
 // newSessionToken returns the opaque secret sent to the browser cookie.
@@ -181,6 +210,11 @@ func verifyPassword(encodedHash string, password string) (bool, error) {
 
 	key := argon2.IDKey([]byte(password), salt, iterations, memory, threads, uint32(len(expectedKey)))
 	return subtle.ConstantTimeCompare(key, expectedKey) == 1, nil
+}
+
+func verifyDummyPassword(password string) error {
+	_, err := verifyPassword(dummyPasswordHash, password)
+	return err
 }
 
 // parseArgon2Params extracts m/t/p values from the encoded hash so password
