@@ -13,6 +13,7 @@ import (
 	"github.com/devmin8/rivet/internal/server/config"
 	"github.com/devmin8/rivet/internal/server/database"
 	"github.com/devmin8/rivet/internal/server/web"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 )
 
@@ -36,12 +37,16 @@ func (s *App) Run() error {
 	defer stop()
 
 	app := web.NewServer(s.cfg, s.db, s.log)
+	app.Hooks().OnListen(func(data fiber.ListenData) error {
+		s.log.Info("🚀 web server started", "host", data.Host, "port", data.Port, "pid", data.PID)
+		return nil
+	})
 
 	// start web server in a separate goroutine
 	errCh := make(chan error, 1)
 	go func() {
 		addr := ":" + s.cfg.Port
-		s.log.Info("web server starting", "addr", addr)
+		s.log.Info("📡 web server starting", "addr", addr)
 
 		if err := app.Listen(addr); err != nil && !isExpectedClose(err) {
 			errCh <- err
