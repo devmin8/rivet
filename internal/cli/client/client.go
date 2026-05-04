@@ -102,26 +102,35 @@ func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*
 	return &res, nil
 }
 
-func (c *Client) UploadImage(ctx context.Context, session *Session, projectID string, imageTag string, tarballPath string) error {
+func (c *Client) DeployProject(ctx context.Context, session *Session, id string) (*dtos.CreateProjectResponse, error) {
+	var res dtos.CreateProjectResponse
+	err := c.post(ctx, "/api/v1/projects/"+url.PathEscape(id)+"/deploy", session, struct{}{}, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) UploadImage(ctx context.Context, session *Session, projectID string, imageTag string, tarballPath string) (string, error) {
 	file, err := os.Open(tarballPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/images/upload", file)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/projects/"+url.PathEscape(projectID)+"/images/upload", file)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.ContentLength = stat.Size()
 	req.Header.Set("Content-Type", "application/x-tar")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set(api.ImageProjectIDHeader, projectID)
 	req.Header.Set(api.ImageTagHeader, imageTag)
 	req.AddCookie(&http.Cookie{
 		Name:  api.SessionCookieName,
@@ -130,15 +139,20 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return decodeError(resp)
+		return "", decodeError(resp)
 	}
 
-	return nil
+	var res dtos.ImageUploadResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+
+	return res.Image, nil
 }
 
 func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {

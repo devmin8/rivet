@@ -13,6 +13,7 @@ import (
 	"github.com/devmin8/rivet/internal/docker"
 	"github.com/devmin8/rivet/internal/server/config"
 	"github.com/devmin8/rivet/internal/server/database"
+	"github.com/devmin8/rivet/internal/server/services"
 	"github.com/devmin8/rivet/internal/server/web"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -53,6 +54,9 @@ func (s *App) Run() error {
 		s.log.Info("🚀 web server started", "host", data.Host, "port", data.Port, "pid", data.PID)
 		return nil
 	})
+
+	projectService := services.NewProjectService(s.db, s.docker)
+	go projectService.RunProjectReconciler(ctx, time.Minute, 10*time.Minute)
 
 	// start web server in a separate goroutine
 	errCh := make(chan error, 1)

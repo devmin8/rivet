@@ -12,19 +12,30 @@ type CreateProjectRequest struct {
 }
 
 type CreateProjectResponse struct {
-	ID           string     `json:"id"`
-	Name         string     `json:"name"`
-	Domain       string     `json:"domain"`
-	Description  string     `json:"description"`
-	Port         string     `json:"port"`
-	Image        string     `json:"image"`
-	Platform     string     `json:"platform"`
-	Status       string     `json:"status"`
-	IsActive     bool       `json:"is_active"`
-	LastActiveAt *time.Time `json:"last_active_at"`
-	ContainerID  string     `json:"container_id"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	CreatedByID  string     `json:"created_by_id"`
-	UpdatedByID  string     `json:"updated_by_id"`
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Domain          string     `json:"domain"`
+	Description     string     `json:"description"`
+	Port            string     `json:"port"`
+	Image           string     `json:"image"`
+	Platform        string     `json:"platform"`
+	Status          string     `json:"status"`
+	DesiredStatus   string     `json:"desired_status"`
+	StatusUpdatedAt time.Time  `json:"status_updated_at"`
+	Error           string     `json:"error"`
+	IsActive        bool       `json:"is_active"`
+	LastActiveAt    *time.Time `json:"last_active_at"`
+	ContainerID     string     `json:"container_id"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	CreatedByID     string     `json:"created_by_id"`
+	UpdatedByID     string     `json:"updated_by_id"`
+}
+
+type ListProjectsResponse struct {
+	Projects []CreateProjectResponse `json:"projects"`
+}
+
+type ImageUploadResponse struct {
+	Image string `json:"image"`
 }

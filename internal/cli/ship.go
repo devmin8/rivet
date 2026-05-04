@@ -70,9 +70,6 @@ func newShipCmd(app *app) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if !project.IsActive {
-					return fmt.Errorf("project %s is not active", id)
-				}
 
 				fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s selected.\n", project.ID)
 				fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", project.Platform)
@@ -140,11 +137,20 @@ func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, sess
 	fmt.Fprintf(cmd.OutOrStdout(), "Uploading %s...\n", result.ImageTag)
 
 	client := app.apiClientWithTimeout(shipUploadTimeout)
-	if err := client.UploadImage(ctx, session, projectID, result.ImageTag, result.TarballPath); err != nil {
+	image, err := client.UploadImage(ctx, session, projectID, result.ImageTag, result.TarballPath)
+	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Image %s uploaded successfully.\n", result.ImageTag)
+	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Image %s uploaded successfully.\n", image)
+	fmt.Fprintln(cmd.OutOrStdout(), "Deploying project...")
+
+	project, err := client.DeployProject(ctx, session, projectID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s deployed successfully.\n", project.ID)
 	return nil
 }
 

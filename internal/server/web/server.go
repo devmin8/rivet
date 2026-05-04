@@ -24,7 +24,7 @@ func NewServer(cfg *config.ServerEnv, db *gorm.DB, dockerClient *docker.Client, 
 		StructValidator:              validation.New(),
 		StreamRequestBody:            true,
 		DisablePreParseMultipartForm: true,
-		// Allow large Docker image tarballs to stream through /images/upload.
+		// Allow large Docker image tarballs to stream through project image uploads.
 		// 2.15 GB
 		BodyLimit: 2 * 1024 * 1024 * 1024,
 	})

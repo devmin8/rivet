@@ -2,14 +2,11 @@ package handlers
 
 import (
 	"bytes"
-	"errors"
-	"io"
 	"strings"
 
 	"github.com/devmin8/rivet/internal/api"
 	"github.com/devmin8/rivet/internal/api/dtos"
 	rivetdocker "github.com/devmin8/rivet/internal/docker"
-	"github.com/devmin8/rivet/internal/server/mapper"
 	"github.com/devmin8/rivet/internal/server/services"
 	"github.com/devmin8/rivet/internal/server/web/requestctx"
 	"github.com/gofiber/fiber/v3"
@@ -28,7 +25,7 @@ func NewImageHandler(projectService *services.ProjectService, dockerClient *rive
 }
 
 func (h *ImageHandler) UploadImage(c fiber.Ctx) error {
-	projectID := strings.TrimSpace(c.Get(api.ImageProjectIDHeader))
+	projectID := strings.TrimSpace(c.Params("id"))
 	if projectID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_request",
@@ -73,36 +70,9 @@ func (h *ImageHandler) UploadImage(c fiber.Ctx) error {
 		image = imageID
 	}
 
-	project, err := h.projectService.UpdateProjectImage(projectID, userID, image)
-	if err != nil {
+	if _, err := h.projectService.UpdateProjectImage(projectID, userID, image); err != nil {
 		return projectError(c, err, "Unable to update project image.")
 	}
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
-}
-
-func projectError(c fiber.Ctx, err error, message string) error {
-	if errors.Is(err, services.ErrProjectNotFound) {
-		return c.Status(fiber.StatusNotFound).JSON(dtos.ErrorResponse{
-			Error:   "not_found",
-			Message: "Project was not found.",
-		})
-	}
-	if errors.Is(err, services.ErrProjectInactive) {
-		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
-			Error:   "project_inactive",
-			Message: "Project is not active.",
-		})
-	}
-	if errors.Is(err, io.ErrUnexpectedEOF) {
-		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Image tarball is invalid.",
-		})
-	}
-
-	return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
-		Error:   "internal_error",
-		Message: message,
-	})
+	return c.Status(fiber.StatusOK).JSON(dtos.ImageUploadResponse{Image: image})
 }

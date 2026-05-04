@@ -28,13 +28,19 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	projectService := services.NewProjectService(webCtx.db)
+	projectService := services.NewProjectService(webCtx.db, webCtx.docker)
 	projectHandler := handlers.NewProjectHandler(projectService)
 	v1.Post("/projects", projectHandler.CreateProject)
+	v1.Get("/projects", projectHandler.ListProjects)
 	v1.Get("/projects/:id", projectHandler.GetProject)
+	v1.Delete("/projects/:id", projectHandler.DeleteProject)
+	v1.Post("/projects/:id/deploy", projectHandler.DeployProject)
+	v1.Post("/projects/:id/start", projectHandler.StartProject)
+	v1.Post("/projects/:id/stop", projectHandler.StopProject)
+	v1.Delete("/projects/:id/container", projectHandler.DeleteProjectContainer)
 
 	imageHandler := handlers.NewImageHandler(projectService, webCtx.docker)
-	v1.Post("/images/upload", imageHandler.UploadImage)
+	v1.Post("/projects/:id/images/upload", imageHandler.UploadImage)
 
 	return app
 }
