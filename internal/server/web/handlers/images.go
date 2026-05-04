@@ -28,7 +28,7 @@ func NewImageHandler(projectService *services.ProjectService, dockerClient *rive
 }
 
 func (h *ImageHandler) UploadImage(c fiber.Ctx) error {
-	projectID := strings.TrimSpace(c.Get(api.ImageProjectIDHeader))
+	projectID := strings.TrimSpace(c.Params("id"))
 	if projectID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_request",

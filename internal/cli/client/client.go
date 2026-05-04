@@ -114,14 +114,14 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/images/upload", file)
+	path := "/api/v1/projects/" + url.PathEscape(projectID) + "/images/upload"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, file)
 	if err != nil {
 		return err
 	}
 	req.ContentLength = stat.Size()
 	req.Header.Set("Content-Type", "application/x-tar")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set(api.ImageProjectIDHeader, projectID)
 	req.Header.Set(api.ImageTagHeader, imageTag)
 	req.AddCookie(&http.Cookie{
 		Name:  api.SessionCookieName,

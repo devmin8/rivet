@@ -34,7 +34,7 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Get("/projects/:id", projectHandler.GetProject)
 
 	imageHandler := handlers.NewImageHandler(projectService, webCtx.docker)
-	v1.Post("/images/upload", imageHandler.UploadImage)
+	v1.Post("/projects/:id/images/upload", imageHandler.UploadImage)
 
 	return app
 }
