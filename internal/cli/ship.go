@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -85,7 +84,7 @@ func newShipCmd(app *app) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&platform, "platform", defaultPlatform(), "Target image platform: linux/amd64 or linux/arm64")
+	cmd.Flags().StringVar(&platform, "platform", "linux/amd64", "Target image platform: linux/amd64 or linux/arm64")
 
 	return cmd
 }
@@ -147,17 +146,6 @@ func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, sess
 
 	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Image %s uploaded successfully.\n", result.ImageTag)
 	return nil
-}
-
-func defaultPlatform() string {
-	switch runtime.GOARCH {
-	case "arm64":
-		return "linux/arm64"
-	case "amd64":
-		return "linux/amd64"
-	default:
-		return "linux/amd64"
-	}
 }
 
 func normalizePlatform(platform string) (string, error) {
