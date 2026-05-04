@@ -45,7 +45,7 @@ func (c *Client) BaseURL() string {
 
 func (c *Client) Register(ctx context.Context, username string, email string, password string) (string, error) {
 	var res dtos.RegisterUserResponse
-	err := c.post(ctx, "/api/v1/auth/register", dtos.RegisterUserRequest{
+	err := c.post(ctx, "/api/v1/auth/register", nil, dtos.RegisterUserRequest{
 		Username: username,
 		Email:    email,
 		Password: password,
@@ -59,7 +59,7 @@ func (c *Client) Register(ctx context.Context, username string, email string, pa
 
 func (c *Client) SignIn(ctx context.Context, username string, password string) (*Session, error) {
 	var res dtos.SignInUserResponse
-	cookies, err := c.postWithCookies(ctx, "/api/v1/auth/signin", dtos.SignInUserRequest{
+	cookies, err := c.postWithCookies(ctx, "/api/v1/auth/signin", nil, dtos.SignInUserRequest{
 		Username: username,
 		Password: password,
 	}, http.StatusOK, &res)
@@ -80,12 +80,22 @@ func (c *Client) SignIn(ctx context.Context, username string, password string) (
 	}, nil
 }
 
-func (c *Client) post(ctx context.Context, path string, body any, wantStatus int, dest any) error {
-	_, err := c.postWithCookies(ctx, path, body, wantStatus, dest)
+func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.CreateProjectRequest) (string, error) {
+	var res dtos.CreateProjectResponse
+	err := c.post(ctx, "/api/v1/projects", session, req, http.StatusCreated, &res)
+	if err != nil {
+		return "", err
+	}
+
+	return res.ID, nil
+}
+
+func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
+	_, err := c.postWithCookies(ctx, path, session, body, wantStatus, dest)
 	return err
 }
 
-func (c *Client) postWithCookies(ctx context.Context, path string, body any, wantStatus int, dest any) ([]*http.Cookie, error) {
+func (c *Client) postWithCookies(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) ([]*http.Cookie, error) {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -97,6 +107,12 @@ func (c *Client) postWithCookies(ctx context.Context, path string, body any, wan
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if session != nil {
+		req.AddCookie(&http.Cookie{
+			Name:  api.SessionCookieName,
+			Value: session.SessionToken,
+		})
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

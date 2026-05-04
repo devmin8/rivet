@@ -42,6 +42,32 @@ func StoreSession(session *Session) error {
 	return os.WriteFile(path, append(data, '\n'), sessionFileMode)
 }
 
+func LoadSession() (*Session, error) {
+	path, err := sessionPath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, errors.New("not signed in; run `rivet signin` first")
+		}
+
+		return nil, err
+	}
+
+	var session Session
+	if err := json.Unmarshal(data, &session); err != nil {
+		return nil, err
+	}
+	if session.SessionToken == "" {
+		return nil, errors.New("not signed in; run `rivet signin` first")
+	}
+
+	return &session, nil
+}
+
 func sessionPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
