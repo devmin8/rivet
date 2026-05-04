@@ -1,6 +1,10 @@
 package web
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/devmin8/rivet/internal/server/services"
+	"github.com/devmin8/rivet/internal/server/web/handlers"
+	"github.com/gofiber/fiber/v3"
+)
 
 func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	// Root route for health check
@@ -16,8 +20,9 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	// Temp, remove later
-	webCtx.log.Info("routes registered")
+	authService := services.NewAuthService(webCtx.db, webCtx.log)
+	authHandler := handlers.NewAuthHandler(authService)
+	v1.Post("/auth/register", authHandler.RegisterUser)
 
 	return app
 }

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/devmin8/rivet/internal/server/config"
+	"github.com/devmin8/rivet/internal/validation"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 )
@@ -16,5 +17,10 @@ type WebContext struct {
 
 func NewServer(cfg *config.ServerEnv, db *gorm.DB, log *slog.Logger) *fiber.App {
 	webCtx := &WebContext{cfg, db, log}
-	return registerRoutes(fiber.New(), webCtx)
+
+	app := fiber.New(fiber.Config{
+		StructValidator: validation.New(),
+	})
+
+	return registerRoutes(app, webCtx)
 }

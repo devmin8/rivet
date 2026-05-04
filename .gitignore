@@ -6,5 +6,4 @@
 .DS_Store
 
 # SQLite databases
-*db*
 *.db

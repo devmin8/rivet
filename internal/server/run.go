@@ -24,8 +24,13 @@ type App struct {
 }
 
 func New(cfg *config.ServerEnv, log *slog.Logger) (*App, error) {
-	db, err := database.NewDB(cfg.DBPath)
+	db, err := database.New(cfg.DBPath)
 	if err != nil {
+		return nil, err
+	}
+
+	// For initial development phases, we'll auto migrate the database
+	if err := database.AutoMigrate(db); err != nil {
 		return nil, err
 	}
 

@@ -9,6 +9,7 @@ import (
 
 func registerCustom(v *validator.Validate) {
 	v.RegisterValidation("domain_or_url", domainOrURL)
+	v.RegisterValidation("username", username)
 }
 
 func domainOrURL(fl validator.FieldLevel) bool {
@@ -32,4 +33,30 @@ func domainOrURL(fl validator.FieldLevel) bool {
 	}
 
 	return false
+}
+
+// username allows stable account handles: letters, numbers, dot, dash, and underscore only.
+func username(fl validator.FieldLevel) bool {
+	val := strings.TrimSpace(fl.Field().String())
+	if val != fl.Field().String() {
+		return false
+	}
+
+	for _, r := range val {
+		if r >= 'a' && r <= 'z' {
+			continue
+		}
+		if r >= 'A' && r <= 'Z' {
+			continue
+		}
+		if r >= '0' && r <= '9' {
+			continue
+		}
+		if r == '_' || r == '-' || r == '.' {
+			continue
+		}
+		return false
+	}
+
+	return true
 }
