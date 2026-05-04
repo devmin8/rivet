@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -80,19 +82,98 @@ func (c *Client) SignIn(ctx context.Context, username string, password string) (
 	}, nil
 }
 
-func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.CreateProjectRequest) (string, error) {
+func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.CreateProjectRequest) (*dtos.CreateProjectResponse, error) {
 	var res dtos.CreateProjectResponse
 	err := c.post(ctx, "/api/v1/projects", session, req, http.StatusCreated, &res)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.ID, nil
+	return &res, nil
+}
+
+func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*dtos.CreateProjectResponse, error) {
+	var res dtos.CreateProjectResponse
+	err := c.get(ctx, "/api/v1/projects/"+url.PathEscape(id), session, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) UploadImage(ctx context.Context, session *Session, projectID string, imageTag string, tarballPath string) error {
+	file, err := os.Open(tarballPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/images/upload", file)
+	if err != nil {
+		return err
+	}
+	req.ContentLength = stat.Size()
+	req.Header.Set("Content-Type", "application/x-tar")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set(api.ImageProjectIDHeader, projectID)
+	req.Header.Set(api.ImageTagHeader, imageTag)
+	req.AddCookie(&http.Cookie{
+		Name:  api.SessionCookieName,
+		Value: session.SessionToken,
+	})
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return decodeError(resp)
+	}
+
+	return nil
 }
 
 func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
 	_, err := c.postWithCookies(ctx, path, session, body, wantStatus, dest)
 	return err
+}
+
+func (c *Client) get(ctx context.Context, path string, session *Session, wantStatus int, dest any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/json")
+	if session != nil {
+		req.AddCookie(&http.Cookie{
+			Name:  api.SessionCookieName,
+			Value: session.SessionToken,
+		})
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != wantStatus {
+		return decodeError(resp)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) postWithCookies(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) ([]*http.Cookie, error) {

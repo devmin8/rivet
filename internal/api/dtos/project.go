@@ -8,6 +8,7 @@ type CreateProjectRequest struct {
 	Description string `json:"description" validate:"max=2048"`
 	Port        uint32 `json:"port" validate:"required,port"`
 	Image       string `json:"image" validate:"max=2048"`
+	Platform    string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
 }
 
 type CreateProjectResponse struct {
@@ -17,6 +18,7 @@ type CreateProjectResponse struct {
 	Description  string     `json:"description"`
 	Port         string     `json:"port"`
 	Image        string     `json:"image"`
+	Platform     string     `json:"platform"`
 	Status       string     `json:"status"`
 	IsActive     bool       `json:"is_active"`
 	LastActiveAt *time.Time `json:"last_active_at"`

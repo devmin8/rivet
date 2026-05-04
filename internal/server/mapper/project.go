@@ -13,6 +13,7 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 		Description:  project.Description,
 		Port:         project.Port,
 		Image:        project.Image,
+		Platform:     string(project.Platform),
 		Status:       string(project.Status),
 		IsActive:     project.IsActive,
 		LastActiveAt: project.LastActiveAt,

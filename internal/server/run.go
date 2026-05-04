@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/devmin8/rivet/internal/docker"
 	"github.com/devmin8/rivet/internal/server/config"
 	"github.com/devmin8/rivet/internal/server/database"
 	"github.com/devmin8/rivet/internal/server/web"
@@ -18,9 +19,10 @@ import (
 )
 
 type App struct {
-	cfg *config.ServerEnv
-	db  *gorm.DB
-	log *slog.Logger
+	cfg    *config.ServerEnv
+	db     *gorm.DB
+	docker *docker.Client
+	log    *slog.Logger
 }
 
 func New(cfg *config.ServerEnv, log *slog.Logger) (*App, error) {
@@ -34,14 +36,19 @@ func New(cfg *config.ServerEnv, log *slog.Logger) (*App, error) {
 		return nil, err
 	}
 
-	return &App{cfg: cfg, db: db, log: log}, nil
+	dockerClient, err := docker.NewClient()
+	if err != nil {
+		return nil, errors.Join(err, closeDB(db))
+	}
+
+	return &App{cfg: cfg, db: db, docker: dockerClient, log: log}, nil
 }
 
 func (s *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	app := web.NewServer(s.cfg, s.db, s.log)
+	app := web.NewServer(s.cfg, s.db, s.docker, s.log)
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
 		s.log.Info("🚀 web server started", "host", data.Host, "port", data.Port, "pid", data.PID)
 		return nil
@@ -78,11 +85,12 @@ func (s *App) Run() error {
 }
 
 func (s *App) close() error {
-	sqlDB, err := s.db.DB()
-	if err != nil {
-		return err
+	var closeErr error
+	if s.docker != nil {
+		closeErr = errors.Join(closeErr, s.docker.Close())
 	}
-	return sqlDB.Close()
+
+	return errors.Join(closeErr, closeDB(s.db))
 }
 
 func (s *App) shutdown(app interface {
@@ -114,4 +122,12 @@ func (s *App) shutdown(app interface {
 func isExpectedClose(err error) bool {
 	return errors.Is(err, net.ErrClosed) ||
 		errors.Is(err, context.Canceled)
+}
+
+func closeDB(db *gorm.DB) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }

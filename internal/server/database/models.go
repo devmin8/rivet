@@ -49,12 +49,20 @@ const (
 	StatusStopped  Status = "stopped"
 )
 
+type Platform string
+
+const (
+	PlatformLinuxAMD64 Platform = "linux/amd64"
+	PlatformLinuxARM64 Platform = "linux/arm64"
+)
+
 type Project struct {
 	ID           string     `gorm:"primaryKey;type:text"`
 	Name         string     `gorm:"size:255;not null;uniqueIndex"`
 	Domain       string     `gorm:"size:255;not null;uniqueIndex"`
 	Description  string     `gorm:"type:text"`
 	Port         string     `gorm:"size:16;not null"`
+	Platform     Platform   `gorm:"type:text;not null;default:linux/amd64"`
 	Image        string     `gorm:"type:text"`
 	Status       Status     `gorm:"type:text;not null;default:creating"`
 	IsActive     bool       `gorm:"not null;default:true"`
@@ -77,4 +85,8 @@ func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (s Status) Valid() bool {
 	return s == StatusCreating || s == StatusRunning || s == StatusStopped
+}
+
+func (p Platform) Valid() bool {
+	return p == PlatformLinuxAMD64 || p == PlatformLinuxARM64
 }
