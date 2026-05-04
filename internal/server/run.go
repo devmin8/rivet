@@ -13,6 +13,7 @@ import (
 	"github.com/devmin8/rivet/internal/docker"
 	"github.com/devmin8/rivet/internal/server/config"
 	"github.com/devmin8/rivet/internal/server/database"
+	"github.com/devmin8/rivet/internal/server/services"
 	"github.com/devmin8/rivet/internal/server/web"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -49,6 +50,10 @@ func (s *App) Run() error {
 	defer stop()
 
 	app := web.NewServer(s.cfg, s.db, s.docker, s.log)
+
+	reconciler := services.NewReconciler(s.db, s.docker, s.log)
+	go reconciler.Run(ctx)
+
 	app.Hooks().OnListen(func(data fiber.ListenData) error {
 		s.log.Info("🚀 web server started", "host", data.Host, "port", data.Port, "pid", data.PID)
 		return nil

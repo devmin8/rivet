@@ -40,13 +40,29 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-// Project table
-type Status string
+type AppStatus string
 
 const (
-	StatusCreating Status = "creating" // todo: needs to revist and make the statuses proper.
-	StatusRunning  Status = "running"
-	StatusStopped  Status = "stopped"
+	AppStatusCreating AppStatus = "creating"
+	AppStatusRunning  AppStatus = "running"
+	AppStatusStopped  AppStatus = "stopped"
+	AppStatusFailed   AppStatus = "failed"
+)
+
+type DesiredStatus string
+
+const (
+	DesiredStatusRunning DesiredStatus = "running"
+	DesiredStatusStopped DesiredStatus = "stopped"
+)
+
+type DeploymentStatus string
+
+const (
+	DeploymentStatusPending DeploymentStatus = "pending"
+	DeploymentStatusRunning DeploymentStatus = "running"
+	DeploymentStatusFailed  DeploymentStatus = "failed"
+	DeploymentStatusStopped DeploymentStatus = "stopped"
 )
 
 type Platform string
@@ -57,23 +73,15 @@ const (
 )
 
 type Project struct {
-	ID           string     `gorm:"primaryKey;type:text"`
-	Name         string     `gorm:"size:255;not null;uniqueIndex"`
-	Domain       string     `gorm:"size:255;not null;uniqueIndex"`
-	Description  string     `gorm:"type:text"`
-	Port         string     `gorm:"size:16;not null"`
-	Platform     Platform   `gorm:"type:text;not null;default:linux/amd64"`
-	Image        string     `gorm:"type:text"`
-	Status       Status     `gorm:"type:text;not null;default:creating"`
-	IsActive     bool       `gorm:"not null;default:true"`
-	LastActiveAt *time.Time `gorm:"index"`
-	ContainerID  string     `gorm:"size:255"`
-	CreatedAt    time.Time  `gorm:"not null;autoCreateTime"`
-	UpdatedAt    time.Time  `gorm:"not null;autoUpdateTime"`
-	CreatedByID  string     `gorm:"type:text;not null;index"`
-	CreatedBy    User       `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
-	UpdatedByID  string     `gorm:"type:text;not null;index"`
-	UpdatedBy    User       `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	ID          string    `gorm:"primaryKey;type:text"`
+	Name        string    `gorm:"size:255;not null"`
+	Description string    `gorm:"type:text"`
+	CreatedAt   time.Time `gorm:"not null;autoCreateTime"`
+	UpdatedAt   time.Time `gorm:"not null;autoUpdateTime"`
+	CreatedByID string    `gorm:"type:text;not null;index"`
+	CreatedBy   User      `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	UpdatedByID string    `gorm:"type:text;not null;index"`
+	UpdatedBy   User      `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
@@ -83,8 +91,75 @@ func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-func (s Status) Valid() bool {
-	return s == StatusCreating || s == StatusRunning || s == StatusStopped
+type App struct {
+	ID                  string        `gorm:"primaryKey;type:text"`
+	ProjectID           string        `gorm:"type:text;not null;index"`
+	Project             Project       `gorm:"foreignKey:ProjectID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Name                string        `gorm:"size:255;not null"`
+	Domain              string        `gorm:"size:255;not null;uniqueIndex"`
+	Description         string        `gorm:"type:text"`
+	Port                string        `gorm:"size:16;not null"`
+	Platform            Platform      `gorm:"type:text;not null;default:linux/amd64"`
+	Status              AppStatus     `gorm:"type:text;not null;default:stopped"`
+	DesiredStatus       DesiredStatus `gorm:"type:text;not null;default:stopped"`
+	StatusUpdatedAt     time.Time     `gorm:"not null;index"`
+	CurrentDeploymentID *string       `gorm:"type:text;index"`
+	LastActiveAt        *time.Time    `gorm:"index"`
+	CreatedAt           time.Time     `gorm:"not null;autoCreateTime"`
+	UpdatedAt           time.Time     `gorm:"not null;autoUpdateTime"`
+	CreatedByID         string        `gorm:"type:text;not null;index"`
+	CreatedBy           User          `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	UpdatedByID         string        `gorm:"type:text;not null;index"`
+	UpdatedBy           User          `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+}
+
+func (a *App) BeforeCreate(tx *gorm.DB) (err error) {
+	if a.ID == "" {
+		a.ID = uuid.NewString()
+	}
+	if a.StatusUpdatedAt.IsZero() {
+		a.StatusUpdatedAt = time.Now().UTC()
+	}
+	return
+}
+
+type Deployment struct {
+	ID              string           `gorm:"primaryKey;type:text"`
+	AppID           string           `gorm:"type:text;not null;index"`
+	App             App              `gorm:"foreignKey:AppID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Image           string           `gorm:"type:text;not null"`
+	ContainerID     string           `gorm:"size:255"`
+	Status          DeploymentStatus `gorm:"type:text;not null;default:pending"`
+	StatusUpdatedAt time.Time        `gorm:"not null;index"`
+	Error           string           `gorm:"type:text"`
+	CreatedAt       time.Time        `gorm:"not null;autoCreateTime"`
+	UpdatedAt       time.Time        `gorm:"not null;autoUpdateTime"`
+	CreatedByID     string           `gorm:"type:text;not null;index"`
+	CreatedBy       User             `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	UpdatedByID     string           `gorm:"type:text;not null;index"`
+	UpdatedBy       User             `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+}
+
+func (d *Deployment) BeforeCreate(tx *gorm.DB) (err error) {
+	if d.ID == "" {
+		d.ID = uuid.NewString()
+	}
+	if d.StatusUpdatedAt.IsZero() {
+		d.StatusUpdatedAt = time.Now().UTC()
+	}
+	return
+}
+
+func (s AppStatus) Valid() bool {
+	return s == AppStatusCreating || s == AppStatusRunning || s == AppStatusStopped || s == AppStatusFailed
+}
+
+func (s DesiredStatus) Valid() bool {
+	return s == DesiredStatusRunning || s == DesiredStatusStopped
+}
+
+func (s DeploymentStatus) Valid() bool {
+	return s == DeploymentStatusPending || s == DeploymentStatusRunning || s == DeploymentStatusFailed || s == DeploymentStatusStopped
 }
 
 func (p Platform) Valid() bool {

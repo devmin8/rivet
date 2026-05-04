@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/devmin8/rivet/internal/server/database"
@@ -10,7 +9,6 @@ import (
 )
 
 var ErrProjectNotFound = errors.New("project not found")
-var ErrProjectInactive = errors.New("project is not active")
 
 type ProjectService struct {
 	db *gorm.DB
@@ -18,11 +16,7 @@ type ProjectService struct {
 
 type CreateProjectRequest struct {
 	Name        string
-	Domain      string
 	Description string
-	Port        uint32
-	Image       string
-	Platform    string
 	CreatedByID string
 }
 
@@ -33,12 +27,7 @@ func NewProjectService(db *gorm.DB) *ProjectService {
 func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Project, error) {
 	project := &database.Project{
 		Name:        strings.TrimSpace(req.Name),
-		Domain:      strings.TrimSpace(req.Domain),
 		Description: strings.TrimSpace(req.Description),
-		Port:        strconv.FormatUint(uint64(req.Port), 10),
-		Image:       strings.TrimSpace(req.Image),
-		Platform:    normalizePlatform(req.Platform),
-		Status:      database.StatusCreating,
 		CreatedByID: req.CreatedByID,
 		UpdatedByID: req.CreatedByID,
 	}
@@ -59,35 +48,26 @@ func (s *ProjectService) GetProject(id string, userID string) (*database.Project
 		return nil, err
 	}
 
-	if !project.IsActive {
-		return nil, ErrProjectInactive
-	}
-
 	return &project, nil
 }
 
-func (s *ProjectService) UpdateProjectImage(id string, userID string, image string) (*database.Project, error) {
-	project, err := s.GetProject(id, userID)
-	if err != nil {
+func (s *ProjectService) ListProjects(userID string) ([]database.Project, error) {
+	var projects []database.Project
+	if err := s.db.Where("created_by_id = ?", userID).Order("created_at DESC").Find(&projects).Error; err != nil {
 		return nil, err
 	}
 
-	project.Image = strings.TrimSpace(image)
-	project.Status = database.StatusStopped
-	project.UpdatedByID = userID
-
-	if err := s.db.Save(project).Error; err != nil {
-		return nil, err
-	}
-
-	return project, nil
+	return projects, nil
 }
 
-func normalizePlatform(platform string) database.Platform {
-	value := database.Platform(strings.TrimSpace(platform))
-	if value.Valid() {
-		return value
+func (s *ProjectService) DeleteProject(id string, userID string) error {
+	result := s.db.Where("id = ? AND created_by_id = ?", id, userID).Delete(&database.Project{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrProjectNotFound
 	}
 
-	return database.PlatformLinuxAMD64
+	return nil
 }

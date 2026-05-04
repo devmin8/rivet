@@ -31,11 +31,7 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 
 	project, err := h.projectService.CreateProject(services.CreateProjectRequest{
 		Name:        req.Name,
-		Domain:      req.Domain,
 		Description: req.Description,
-		Port:        req.Port,
-		Image:       req.Image,
-		Platform:    req.Platform,
 		CreatedByID: userID,
 	})
 
@@ -60,13 +56,6 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 				Message: "Project was not found.",
 			})
 		}
-		if errors.Is(err, services.ErrProjectInactive) {
-			return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
-				Error:   "project_inactive",
-				Message: "Project is not active.",
-			})
-		}
-
 		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
 			Error:   "internal_error",
 			Message: "Unable to get project.",
@@ -74,4 +63,38 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) ListProjects(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	projects, err := h.projectService.ListProjects(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to list projects.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToListProjectsResponse(projects))
+}
+
+func (h *ProjectHandler) DeleteProject(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	if err := h.projectService.DeleteProject(c.Params("id"), userID); err != nil {
+		if errors.Is(err, services.ErrProjectNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dtos.ErrorResponse{
+				Error:   "not_found",
+				Message: "Project was not found.",
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to delete project.",
+		})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }

@@ -102,26 +102,67 @@ func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*
 	return &res, nil
 }
 
-func (c *Client) UploadImage(ctx context.Context, session *Session, projectID string, imageTag string, tarballPath string) error {
+func (c *Client) CreateApp(ctx context.Context, session *Session, projectID string, req dtos.CreateAppRequest) (*dtos.AppResponse, error) {
+	var res dtos.AppResponse
+	err := c.post(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/apps", session, req, http.StatusCreated, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) ListProjectApps(ctx context.Context, session *Session, projectID string) (*dtos.ListAppsResponse, error) {
+	var res dtos.ListAppsResponse
+	err := c.get(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/apps", session, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) GetApp(ctx context.Context, session *Session, appID string) (*dtos.AppResponse, error) {
+	var res dtos.AppResponse
+	err := c.get(ctx, "/api/v1/apps/"+url.PathEscape(appID), session, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) CreateDeployment(ctx context.Context, session *Session, appID string, image string) (*dtos.DeploymentResponse, error) {
+	var res dtos.DeploymentResponse
+	err := c.post(ctx, "/api/v1/apps/"+url.PathEscape(appID)+"/deployments", session, dtos.CreateDeploymentRequest{
+		Image: image,
+	}, http.StatusCreated, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) UploadImage(ctx context.Context, session *Session, appID string, imageTag string, tarballPath string) (string, error) {
 	file, err := os.Open(tarballPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/images/upload", file)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/apps/"+url.PathEscape(appID)+"/images/upload", file)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.ContentLength = stat.Size()
 	req.Header.Set("Content-Type", "application/x-tar")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set(api.ImageProjectIDHeader, projectID)
 	req.Header.Set(api.ImageTagHeader, imageTag)
 	req.AddCookie(&http.Cookie{
 		Name:  api.SessionCookieName,
@@ -130,15 +171,20 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return decodeError(resp)
+		return "", decodeError(resp)
 	}
 
-	return nil
+	var res dtos.ImageUploadResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+
+	return res.Image, nil
 }
 
 func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {

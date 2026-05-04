@@ -31,10 +31,28 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	projectService := services.NewProjectService(webCtx.db)
 	projectHandler := handlers.NewProjectHandler(projectService)
 	v1.Post("/projects", projectHandler.CreateProject)
+	v1.Get("/projects", projectHandler.ListProjects)
 	v1.Get("/projects/:id", projectHandler.GetProject)
+	v1.Delete("/projects/:id", projectHandler.DeleteProject)
 
-	imageHandler := handlers.NewImageHandler(projectService, webCtx.docker)
-	v1.Post("/images/upload", imageHandler.UploadImage)
+	appService := services.NewAppService(webCtx.db)
+	appHandler := handlers.NewAppHandler(appService)
+	v1.Post("/projects/:projectID/apps", appHandler.CreateApp)
+	v1.Get("/projects/:projectID/apps", appHandler.ListApps)
+
+	v1.Get("/apps/:appID", appHandler.GetApp)
+	v1.Delete("/apps/:appID", appHandler.DeleteApp)
+
+	imageHandler := handlers.NewImageHandler(appService, webCtx.docker)
+	v1.Post("/apps/:appID/images/upload", imageHandler.UploadImage)
+
+	deploymentService := services.NewDeploymentService(webCtx.db, webCtx.docker)
+	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
+	v1.Post("/apps/:appID/deployments", deploymentHandler.CreateDeployment)
+	v1.Get("/apps/:appID/deployments", deploymentHandler.ListDeployments)
+	v1.Post("/apps/:appID/start", deploymentHandler.StartAppContainer)
+	v1.Post("/apps/:appID/stop", deploymentHandler.StopAppContainer)
+	v1.Delete("/apps/:appID/container", deploymentHandler.DeleteAppContainer)
 
 	return app
 }
