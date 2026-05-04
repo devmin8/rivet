@@ -10,3 +10,9 @@ func ToRegisterUserResponse(user *database.User) dtos.RegisterUserResponse {
 		ID: user.ID,
 	}
 }
+
+func ToSignInUserResponse(user *database.User) dtos.SignInUserResponse {
+	return dtos.SignInUserResponse{
+		ID: user.ID,
+	}
+}

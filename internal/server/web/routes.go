@@ -23,6 +23,7 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	authService := services.NewAuthService(webCtx.db, webCtx.log)
 	authHandler := handlers.NewAuthHandler(authService)
 	v1.Post("/auth/register", authHandler.RegisterUser)
+	v1.Post("/auth/signin", authHandler.SignInUser)
 
 	return app
 }

@@ -12,3 +12,13 @@ type RegisterUserRequest struct {
 type RegisterUserResponse struct {
 	ID string `json:"id"`
 }
+
+type SignInUserRequest struct {
+	Username string `json:"username" validate:"required,min=3,max=32,username"`
+	// Keep signin password validation aligned with registration.
+	Password string `json:"password" validate:"required,min=15,max=128"`
+}
+
+type SignInUserResponse struct {
+	ID string `json:"id"`
+}

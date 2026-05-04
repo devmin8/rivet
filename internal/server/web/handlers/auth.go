@@ -13,6 +13,8 @@ type AuthHandler struct {
 	authService *services.AuthService
 }
 
+const sessionCookieName = "__Host-rivet_session"
+
 func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
@@ -42,4 +44,41 @@ func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(mapper.ToRegisterUserResponse(user))
+}
+
+func (h *AuthHandler) SignInUser(c fiber.Ctx) error {
+	req := new(dtos.SignInUserRequest)
+	if err := c.Bind().Body(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Request body is invalid.",
+		})
+	}
+
+	result, err := h.authService.SignInUser(req.Username, req.Password)
+	if err != nil {
+		if errors.Is(err, services.ErrInvalidCredentials) {
+			return c.Status(fiber.StatusUnauthorized).JSON(dtos.ErrorResponse{
+				Error:   "signin_failed",
+				Message: "Unable to sign in with the provided credentials.",
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to sign in.",
+		})
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:        sessionCookieName,
+		Value:       result.SessionToken,
+		Path:        "/",
+		Secure:      true,
+		HTTPOnly:    true,
+		SameSite:    fiber.CookieSameSiteStrictMode,
+		SessionOnly: true,
+	})
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToSignInUserResponse(result.User))
 }
