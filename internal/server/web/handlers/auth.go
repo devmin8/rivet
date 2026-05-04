@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 
+	"github.com/devmin8/rivet/internal/api"
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
 	"github.com/devmin8/rivet/internal/server/services"
@@ -12,8 +13,6 @@ import (
 type AuthHandler struct {
 	authService *services.AuthService
 }
-
-const sessionCookieName = "__Host-rivet_session"
 
 func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
@@ -71,7 +70,7 @@ func (h *AuthHandler) SignInUser(c fiber.Ctx) error {
 	}
 
 	c.Cookie(&fiber.Cookie{
-		Name:        sessionCookieName,
+		Name:        api.SessionCookieName,
 		Value:       result.SessionToken,
 		Path:        "/",
 		Secure:      true,
