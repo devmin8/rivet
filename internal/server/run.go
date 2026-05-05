@@ -7,9 +7,11 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/devmin8/rivet/internal/caddy"
 	"github.com/devmin8/rivet/internal/docker"
 	"github.com/devmin8/rivet/internal/server/config"
 	"github.com/devmin8/rivet/internal/server/database"
@@ -23,6 +25,7 @@ type App struct {
 	cfg    *config.ServerEnv
 	db     *gorm.DB
 	docker *docker.Client
+	caddy  *caddy.Client
 	log    *slog.Logger
 }
 
@@ -42,12 +45,19 @@ func New(cfg *config.ServerEnv, log *slog.Logger) (*App, error) {
 		return nil, errors.Join(err, closeDB(db))
 	}
 
-	return &App{cfg: cfg, db: db, docker: dockerClient, log: log}, nil
+	caddyClient := caddy.New(cfg.CaddyURL, cfg.AppEnv)
+
+	return &App{cfg: cfg, db: db, docker: dockerClient, caddy: caddyClient, log: log}, nil
 }
 
 func (s *App) Run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// load caddy config
+	if err := s.loadCaddy(ctx); err != nil {
+		return err
+	}
 
 	// api server
 	app := web.NewServer(s.cfg, s.db, s.docker, s.log)
@@ -64,7 +74,7 @@ func (s *App) Run() error {
 	// start web server in a separate goroutine
 	errCh := make(chan error, 1)
 	go func() {
-		addr := ":" + s.cfg.Port
+		addr := ":" + strconv.Itoa(s.cfg.Port)
 		s.log.Info("📡 web server starting", "addr", addr)
 
 		if err := app.Listen(addr); err != nil && !isExpectedClose(err) {
@@ -89,6 +99,16 @@ func (s *App) Run() error {
 	}
 
 	return errors.Join(runErr, s.shutdown(app))
+}
+
+func (s *App) loadCaddy(ctx context.Context) error {
+	return s.caddy.Load(ctx, []caddy.Route{
+		{
+			Domain:        s.cfg.Domain,
+			ContainerName: "rivet-server",
+			Port:          s.cfg.Port,
+		},
+	})
 }
 
 func (s *App) close() error {

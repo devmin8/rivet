@@ -18,10 +18,12 @@ need_cmd() {
 setup_configuration() {
 	REPO_ROOT=$(pwd)
 
+	# App environment
+	APP_ENV=${APP_ENV:-"dev"}
+
 	# Rivet config
 	RIVET_HOME=${RIVET_HOME:-"$HOME/.rivet"}
 	RIVET_DOMAIN=${RIVET_DOMAIN:-"http://rivet-server.localhost"}
-	RIVET_URL="http://$RIVET_DOMAIN"
 	RIVET_SERVER_DATA_DIR="$RIVET_HOME/server/data"
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
 
@@ -69,10 +71,6 @@ write_caddyfile() {
 {
 	admin 0.0.0.0:2019
 }
-
-$RIVET_DOMAIN {
-	reverse_proxy rivet-server:3000
-}
 EOF
 }
 
@@ -92,9 +90,10 @@ start_rivet_server() {
 		--restart unless-stopped \
 		-e PORT=3000 \
 		-e DOMAIN=$RIVET_DOMAIN \
+		-e APP_ENV=$APP_ENV \
 		-e DB_PATH=/data/rivet.db \
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
-		rivet-server:dev >/dev/null
+		rivet-server:$APP_ENV >/dev/null
 }
 
 start_caddy() {
@@ -113,8 +112,8 @@ start_caddy() {
 }
 
 build_rivet_server() {
-	log "Building rivet-server:dev from $REPO_ROOT"
-	docker build -t rivet-server:dev "$REPO_ROOT"
+	log "Building rivet-server:$APP_ENV from $REPO_ROOT"
+	docker build -t rivet-server:$APP_ENV "$REPO_ROOT"
 }
 
 main() {
@@ -126,10 +125,11 @@ main() {
 	build_rivet_server
 	write_caddyfile
 	ensure_network
-	start_rivet_server
+	# Caddy must be up before rivet-server: the server POSTs to rivet-caddy on startup.
 	start_caddy
+	start_rivet_server
 
-	log "✅ Rivet is running at $RIVET_URL"
+	log "✅ Rivet is running at $RIVET_DOMAIN"
 	log "📦 Persistent state is in $RIVET_HOME"
 	log ""
 	log "Tip: run with RIVET_FULL_PRUNE=1 for a completely clean Docker state"
