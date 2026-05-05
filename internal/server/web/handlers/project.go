@@ -29,7 +29,7 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 
 	userID, _ := requestctx.RequireUserID(c)
 
-	project, err := h.projectService.CreateProject(services.CreateProjectRequest{
+	project, err := h.projectService.CreateProject(c.Context(), services.CreateProjectRequest{
 		Name:        req.Name,
 		Domain:      req.Domain,
 		Description: req.Description,

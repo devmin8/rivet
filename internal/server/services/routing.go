@@ -1,0 +1,116 @@
+package services
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"log/slog"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/devmin8/rivet/internal/caddy"
+	"github.com/devmin8/rivet/internal/server/database"
+	"gorm.io/gorm"
+)
+
+type caddyLoader interface {
+	Load(ctx context.Context, routes []caddy.Route) error
+}
+
+type RoutingService struct {
+	db          *gorm.DB
+	caddy       caddyLoader
+	serverRoute caddy.Route
+	log         *slog.Logger
+
+	mu       sync.Mutex
+	lastHash string
+}
+
+func NewRoutingService(db *gorm.DB, caddyClient caddyLoader, serverDomain string, serverPort int, log *slog.Logger) *RoutingService {
+	return &RoutingService{
+		db:    db,
+		caddy: caddyClient,
+		serverRoute: caddy.Route{
+			Domain:        strings.TrimSpace(serverDomain),
+			ContainerName: "rivet-server",
+			Port:          serverPort,
+		},
+		log: log,
+	}
+}
+
+func (s *RoutingService) Sync(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	routes, err := s.routes()
+	if err != nil {
+		return err
+	}
+
+	hash := hashRoutes(routes)
+	if hash == s.lastHash {
+		return nil
+	}
+
+	if err := s.caddy.Load(ctx, routes); err != nil {
+		return err
+	}
+
+	s.lastHash = hash
+	if s.log != nil {
+		s.log.Info("synced caddy routes", "routes", len(routes))
+	}
+
+	return nil
+}
+
+func (s *RoutingService) routes() ([]caddy.Route, error) {
+	var projects []database.Project
+
+	err := s.db.
+		Where("is_active = ? AND desired_status = ?", true, database.DesiredStatusRunning).
+		Find(&projects).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	routes := make([]caddy.Route, 0, len(projects)+1)
+	routes = append(routes, s.serverRoute)
+
+	for _, project := range projects {
+		port, err := strconv.Atoi(strings.TrimSpace(project.Port))
+		if err != nil {
+			return nil, fmt.Errorf("invalid project port: project_id=%s port=%q: %w", project.ID, project.Port, err)
+		}
+
+		routes = append(routes, caddy.Route{
+			Domain:        strings.TrimSpace(project.Domain),
+			ContainerName: project.ContainerName,
+			Port:          port,
+		})
+	}
+
+	sort.Slice(routes, func(i, j int) bool {
+		if routes[i].Domain == routes[j].Domain {
+			return routes[i].ContainerName < routes[j].ContainerName
+		}
+		return routes[i].Domain < routes[j].Domain
+	})
+
+	return routes, nil
+}
+
+func hashRoutes(routes []caddy.Route) string {
+	h := sha256.New()
+	for _, route := range routes {
+		fmt.Fprintf(h, "%s\x00%s\x00%d\x00", route.Domain, route.ContainerName, route.Port)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}

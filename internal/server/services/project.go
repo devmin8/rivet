@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,19 @@ var ErrNoTargetImage = errors.New("project has no target image")
 type ProjectService struct {
 	db     *gorm.DB
 	docker *docker.Client
+	routes RouteSyncer
+	log    *slog.Logger
+}
+
+type RouteSyncer interface {
+	Sync(ctx context.Context) error
+}
+
+type ProjectServiceDeps struct {
+	DB     *gorm.DB
+	Docker *docker.Client
+	Routes RouteSyncer
+	Log    *slog.Logger
 }
 
 type CreateProjectRequest struct {
@@ -31,11 +45,16 @@ type CreateProjectRequest struct {
 	CreatedByID string
 }
 
-func NewProjectService(db *gorm.DB, docker *docker.Client) *ProjectService {
-	return &ProjectService{db: db, docker: docker}
+func NewProjectService(deps ProjectServiceDeps) *ProjectService {
+	return &ProjectService{
+		db:     deps.DB,
+		docker: deps.Docker,
+		routes: deps.Routes,
+		log:    deps.Log,
+	}
 }
 
-func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Project, error) {
+func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectRequest) (*database.Project, error) {
 	project := &database.Project{
 		Name:          strings.TrimSpace(req.Name),
 		Domain:        strings.TrimSpace(req.Domain),
@@ -52,7 +71,8 @@ func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Proj
 		return nil, err
 	}
 
-	// TODO: sync Caddy using project domain and deterministic container name.
+	s.syncRoutes(ctx, project.ID)
+
 	return project, nil
 }
 
@@ -102,7 +122,23 @@ func (s *ProjectService) DeployProject(ctx context.Context, id string, userID st
 		return nil, s.markDeployFailed(project.ID, project.TargetImageRef, err)
 	}
 
-	return s.markDeployRunning(project.ID, project.TargetImageRef, containerID)
+	project, err = s.markDeployRunning(project.ID, project.TargetImageRef, containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	s.syncRoutes(ctx, project.ID)
+	return project, nil
+}
+
+func (s *ProjectService) syncRoutes(ctx context.Context, projectID string) {
+	if s.routes == nil {
+		return
+	}
+
+	if err := s.routes.Sync(ctx); err != nil && s.log != nil {
+		s.log.Error("failed to sync caddy routes", "project_id", projectID, "err", err)
+	}
 }
 
 func (s *ProjectService) ActiveDesiredRunningProjects() ([]database.Project, error) {

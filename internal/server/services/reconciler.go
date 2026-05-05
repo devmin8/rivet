@@ -22,9 +22,13 @@ type Reconciler struct {
 
 func NewReconciler(db *gorm.DB, dockerClient *docker.Client, log *slog.Logger) *Reconciler {
 	return &Reconciler{
-		projects: NewProjectService(db, dockerClient),
-		docker:   dockerClient,
-		log:      log,
+		projects: NewProjectService(ProjectServiceDeps{
+			DB:     db,
+			Docker: dockerClient,
+			Log:    log,
+		}),
+		docker: dockerClient,
+		log:    log,
 	}
 }
 

@@ -94,6 +94,7 @@ func buildCaddyConfig(env config.AppEnv, routes []Route) map[string]any {
 			"terminal": true,
 		})
 	}
+	caddyRoutes = append(caddyRoutes, notFoundRoute())
 
 	server := map[string]any{
 		"listen": []string{":80"},

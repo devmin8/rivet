@@ -25,7 +25,7 @@ type App struct {
 	cfg    *config.ServerEnv
 	db     *gorm.DB
 	docker *docker.Client
-	caddy  *caddy.Client
+	routes *services.RoutingService
 	log    *slog.Logger
 }
 
@@ -46,8 +46,9 @@ func New(cfg *config.ServerEnv, log *slog.Logger) (*App, error) {
 	}
 
 	caddyClient := caddy.New(cfg.CaddyURL, cfg.AppEnv)
+	routes := services.NewRoutingService(db, caddyClient, cfg.Domain, cfg.Port, log)
 
-	return &App{cfg: cfg, db: db, docker: dockerClient, caddy: caddyClient, log: log}, nil
+	return &App{cfg: cfg, db: db, docker: dockerClient, routes: routes, log: log}, nil
 }
 
 func (s *App) Run() error {
@@ -55,12 +56,15 @@ func (s *App) Run() error {
 	defer stop()
 
 	// load caddy config
-	if err := s.loadCaddy(ctx); err != nil {
+	if err := s.routes.Sync(ctx); err != nil {
 		return err
 	}
 
 	// api server
-	app := web.NewServer(s.cfg, s.db, s.docker, s.log)
+	app := web.NewServer(s.cfg, s.db, s.docker, s.routes, s.log)
+
+	// keep Caddy in sync with project route changes missed by request-time syncs
+	s.routes.StartSyncer(ctx)
 
 	// reconciler to manage the deployment of projects
 	reconciler := services.NewReconciler(s.db, s.docker, s.log)
@@ -99,16 +103,6 @@ func (s *App) Run() error {
 	}
 
 	return errors.Join(runErr, s.shutdown(app))
-}
-
-func (s *App) loadCaddy(ctx context.Context) error {
-	return s.caddy.Load(ctx, []caddy.Route{
-		{
-			Domain:        s.cfg.Domain,
-			ContainerName: "rivet-server",
-			Port:          s.cfg.Port,
-		},
-	})
 }
 
 func (s *App) close() error {

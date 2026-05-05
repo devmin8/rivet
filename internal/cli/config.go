@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultServerURL = "http://localhost:3000"
+	defaultServerURL = "http://rivet-server.localhost"
 
 	serverURLEnv = "RIVET_SERVER_URL"
 	timeoutEnv   = "RIVET_API_TIMEOUT"

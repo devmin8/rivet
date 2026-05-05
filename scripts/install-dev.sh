@@ -23,7 +23,7 @@ setup_configuration() {
 
 	# Rivet config
 	RIVET_HOME=${RIVET_HOME:-"$HOME/.rivet"}
-	RIVET_DOMAIN=${RIVET_DOMAIN:-"http://rivet-server.localhost"}
+	RIVET_DOMAIN=${RIVET_DOMAIN:-"rivet-server.localhost"}
 	RIVET_SERVER_DATA_DIR="$RIVET_HOME/server/data"
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
 
@@ -129,7 +129,7 @@ main() {
 	start_caddy
 	start_rivet_server
 
-	log "✅ Rivet is running at $RIVET_DOMAIN"
+	log "✅ Rivet is running at http://$RIVET_DOMAIN"
 	log "📦 Persistent state is in $RIVET_HOME"
 	log ""
 	log "Tip: run with RIVET_FULL_PRUNE=1 for a completely clean Docker state"
