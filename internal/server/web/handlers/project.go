@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
@@ -12,10 +14,16 @@ import (
 
 type ProjectHandler struct {
 	projectService *services.ProjectService
+	routes         RouteSyncer
+	log            *slog.Logger
 }
 
-func NewProjectHandler(projectService *services.ProjectService) *ProjectHandler {
-	return &ProjectHandler{projectService: projectService}
+type RouteSyncer interface {
+	Sync(ctx context.Context) error
+}
+
+func NewProjectHandler(projectService *services.ProjectService, routes RouteSyncer, log *slog.Logger) *ProjectHandler {
+	return &ProjectHandler{projectService: projectService, routes: routes, log: log}
 }
 
 func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
@@ -29,7 +37,7 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 
 	userID, _ := requestctx.RequireUserID(c)
 
-	project, err := h.projectService.CreateProject(c.Context(), services.CreateProjectRequest{
+	project, err := h.projectService.CreateProject(services.CreateProjectRequest{
 		Name:        req.Name,
 		Domain:      req.Domain,
 		Description: req.Description,
@@ -44,6 +52,8 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 			Message: "Unable to create project.",
 		})
 	}
+
+	h.syncRoutes(c.Context(), project.ID)
 
 	return c.Status(fiber.StatusCreated).JSON(mapper.ToCreateProjectResponse(project))
 }
@@ -83,5 +93,17 @@ func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
 		return projectError(c, err, "Unable to deploy project.")
 	}
 
+	h.syncRoutes(c.Context(), project.ID)
+
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) syncRoutes(ctx context.Context, projectID string) {
+	if h.routes == nil {
+		return
+	}
+
+	if err := h.routes.Sync(ctx); err != nil && h.log != nil {
+		h.log.Error("failed to sync caddy routes", "project_id", projectID, "err", err)
+	}
 }
