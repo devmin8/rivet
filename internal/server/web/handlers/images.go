@@ -13,6 +13,7 @@ import (
 	"github.com/devmin8/rivet/internal/server/services"
 	"github.com/devmin8/rivet/internal/server/web/requestctx"
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
 
 type ImageHandler struct {
@@ -67,13 +68,15 @@ func (h *ImageHandler) UploadImage(c fiber.Ctx) error {
 		})
 	}
 
-	image := imageTag
-	imageID, err := h.dockerClient.InspectImageID(c.Context(), imageTag)
-	if err == nil && imageID != "" {
-		image = imageID
+	targetImageRef := "rivet/" + projectID + ":" + uuid.NewString()
+	if err := h.dockerClient.TagImage(c.Context(), imageTag, targetImageRef); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "docker_error",
+			Message: "Unable to tag image.",
+		})
 	}
 
-	project, err := h.projectService.UpdateProjectImage(projectID, userID, image)
+	project, err := h.projectService.UpdateProjectTargetImage(projectID, userID, targetImageRef)
 	if err != nil {
 		return projectError(c, err, "Unable to update project image.")
 	}
@@ -92,6 +95,18 @@ func projectError(c fiber.Ctx, err error, message string) error {
 		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
 			Error:   "project_inactive",
 			Message: "Project is not active.",
+		})
+	}
+	if errors.Is(err, services.ErrDeployInProgress) {
+		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
+			Error:   "deploy_in_progress",
+			Message: "Deploy is already in progress.",
+		})
+	}
+	if errors.Is(err, services.ErrNoTargetImage) {
+		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+			Error:   "no_target_image",
+			Message: "Upload an image before deploying.",
 		})
 	}
 	if errors.Is(err, io.ErrUnexpectedEOF) {

@@ -34,7 +34,6 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 		Domain:      req.Domain,
 		Description: req.Description,
 		Port:        req.Port,
-		Image:       req.Image,
 		Platform:    req.Platform,
 		CreatedByID: userID,
 	})
@@ -71,6 +70,17 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 			Error:   "internal_error",
 			Message: "Unable to get project.",
 		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	project, err := h.projectService.DeployProject(c.Context(), c.Params("id"), userID)
+	if err != nil {
+		return projectError(c, err, "Unable to deploy project.")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))

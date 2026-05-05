@@ -145,6 +145,13 @@ func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, sess
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Image %s uploaded successfully.\n", result.ImageTag)
+	fmt.Fprintln(cmd.OutOrStdout(), "Deploying project...")
+	project, err := client.DeployProject(ctx, session, projectID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s deployed successfully.\n", project.ID)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,9 +45,17 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 type Status string
 
 const (
-	StatusCreating Status = "creating" // todo: needs to revist and make the statuses proper.
-	StatusRunning  Status = "running"
-	StatusStopped  Status = "stopped"
+	StatusStopped   Status = "stopped"
+	StatusDeploying Status = "deploying"
+	StatusRunning   Status = "running"
+	StatusFailed    Status = "failed"
+)
+
+type DesiredStatus string
+
+const (
+	DesiredStatusRunning DesiredStatus = "running"
+	DesiredStatusStopped DesiredStatus = "stopped"
 )
 
 type Platform string
@@ -57,34 +66,55 @@ const (
 )
 
 type Project struct {
-	ID           string     `gorm:"primaryKey;type:text"`
-	Name         string     `gorm:"size:255;not null;uniqueIndex"`
-	Domain       string     `gorm:"size:255;not null;uniqueIndex"`
-	Description  string     `gorm:"type:text"`
-	Port         string     `gorm:"size:16;not null"`
-	Platform     Platform   `gorm:"type:text;not null;default:linux/amd64"`
-	Image        string     `gorm:"type:text"`
-	Status       Status     `gorm:"type:text;not null;default:creating"`
+	ID          string `gorm:"primaryKey;type:text"`
+	Name        string `gorm:"size:255;not null;uniqueIndex"`
+	Domain      string `gorm:"size:255;not null;uniqueIndex"`
+	Description string `gorm:"type:text"`
+
+	Port     string   `gorm:"size:16;not null"`
+	Platform Platform `gorm:"type:text;not null;default:linux/amd64"`
+
+	// Runtime identity
+	ContainerName string `gorm:"size:255;not null;uniqueIndex"`
+	ContainerID   string `gorm:"size:255"`
+
+	// Image state
+	CurrentImageRef string `gorm:"type:text"` // last known good image
+	TargetImageRef  string `gorm:"type:text"` // image we want running
+
+	Status        Status        `gorm:"type:text;not null;default:stopped"`
+	DesiredStatus DesiredStatus `gorm:"type:text;not null;default:stopped"`
+	LastError     string        `gorm:"type:text"`
+
 	IsActive     bool       `gorm:"not null;default:true"`
 	LastActiveAt *time.Time `gorm:"index"`
-	ContainerID  string     `gorm:"size:255"`
-	CreatedAt    time.Time  `gorm:"not null;autoCreateTime"`
-	UpdatedAt    time.Time  `gorm:"not null;autoUpdateTime"`
-	CreatedByID  string     `gorm:"type:text;not null;index"`
-	CreatedBy    User       `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
-	UpdatedByID  string     `gorm:"type:text;not null;index"`
-	UpdatedBy    User       `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+
+	CreatedAt time.Time `gorm:"not null;autoCreateTime"`
+	UpdatedAt time.Time `gorm:"not null;autoUpdateTime"`
+
+	CreatedByID string `gorm:"type:text;not null;index"`
+	CreatedBy   User   `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+
+	UpdatedByID string `gorm:"type:text;not null;index"`
+	UpdatedBy   User   `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.ID == "" {
 		p.ID = uuid.NewString()
 	}
+	if p.ContainerName == "" {
+		p.ContainerName = fmt.Sprintf("rivet-%s", p.ID)
+	}
 	return
 }
 
 func (s Status) Valid() bool {
-	return s == StatusCreating || s == StatusRunning || s == StatusStopped
+	return s == StatusRunning || s == StatusStopped || s == StatusDeploying || s == StatusFailed
+}
+
+func (s DesiredStatus) Valid() bool {
+	return s == DesiredStatusRunning || s == DesiredStatusStopped
 }
 
 func (p Platform) Valid() bool {

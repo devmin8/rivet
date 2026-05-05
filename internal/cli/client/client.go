@@ -141,6 +141,16 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 	return nil
 }
 
+func (c *Client) DeployProject(ctx context.Context, session *Session, projectID string) (*dtos.CreateProjectResponse, error) {
+	var res dtos.CreateProjectResponse
+	err := c.post(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/deploy", session, struct{}{}, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
 	_, err := c.postWithCookies(ctx, path, session, body, wantStatus, dest)
 	return err
