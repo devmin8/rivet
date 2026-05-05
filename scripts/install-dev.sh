@@ -26,6 +26,7 @@ setup_configuration() {
 	RIVET_DOMAIN=${RIVET_DOMAIN:-"rivet-server.localhost"}
 	RIVET_SERVER_DATA_DIR="$RIVET_HOME/server/data"
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
+	RIVET_DOCKER_SOCK=${RIVET_DOCKER_SOCK:-"/var/run/docker.sock"}
 
 	# Caddy config
 	CADDY_DIR="$RIVET_HOME/caddy"
@@ -40,6 +41,7 @@ ensure_repository() {
 	[ -f "$REPO_ROOT/go.mod" ] || fail "go.mod not found at $REPO_ROOT"
 	[ -d "$REPO_ROOT/cmd/rivet-server" ] || fail "cmd/rivet-server not found at $REPO_ROOT"
 	[ -f "$REPO_ROOT/Dockerfile" ] || fail "Dockerfile not found at $REPO_ROOT"
+	[ -S "$RIVET_DOCKER_SOCK" ] || fail "Docker socket not found at $RIVET_DOCKER_SOCK"
 }
 
 cleanup() {
@@ -93,6 +95,7 @@ start_rivet_server() {
 		-e APP_ENV=$APP_ENV \
 		-e DB_PATH=/data/rivet.db \
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
+		-v "$RIVET_DOCKER_SOCK:/var/run/docker.sock" \
 		rivet-server:$APP_ENV >/dev/null
 }
 
