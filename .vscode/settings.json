@@ -1,0 +1,19 @@
+{
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "tsconfig.json": "tsconfig.*.json, env.d.ts, typed-router.d.ts",
+    "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
+    "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .oxlint*, oxlint*, .oxfmt*, .prettier*, prettier*, .editorconfig",
+    "go.mod": "go.sum, Makefile",
+    "Dockerfile": ".dockerignore",
+    ".gitignore": ".gitattributes"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode"
+}

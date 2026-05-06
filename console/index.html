@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rivet Console</title>
+
+    <script>
+      // https://tailwindcss.com/docs/dark-mode#with-system-theme-support
+      // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+      (function () {
+        var root = document.documentElement;
+
+        try {
+          var stored = localStorage.getItem("vueuse-color-scheme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var shouldUseDark = stored === "dark" || ((!stored || stored === "auto") && prefersDark);
+
+          root.classList.toggle("dark", shouldUseDark);
+          root.style.colorScheme = shouldUseDark ? "dark" : "light";
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
