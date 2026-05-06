@@ -27,6 +27,18 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
+// Setting table
+type Setting struct {
+	Key         string    `gorm:"primaryKey;type:text;not null"`
+	Value       string    `gorm:"type:text;not null"`
+	CreatedByID *string   `gorm:"type:text;index"`
+	CreatedBy   *User     `gorm:"foreignKey:CreatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	UpdatedByID *string   `gorm:"type:text;index"`
+	UpdatedBy   *User     `gorm:"foreignKey:UpdatedByID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	CreatedAt   time.Time `gorm:"not null;autoCreateTime"`
+	UpdatedAt   time.Time `gorm:"not null;autoUpdateTime"`
+}
+
 // Session table
 type Session struct {
 	ID         string    `gorm:"primaryKey;type:text"`

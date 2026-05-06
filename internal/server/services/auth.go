@@ -20,6 +20,7 @@ import (
 )
 
 var ErrUserAlreadyExists = errors.New("user already exists")
+var ErrRegistrationClosed = errors.New("registration is closed")
 var ErrInvalidCredentials = errors.New("invalid credentials")
 var ErrInvalidSession = errors.New("invalid session")
 
@@ -47,12 +48,34 @@ func (s *AuthService) RegisterUser(email string, username string, password strin
 		Username:     strings.ToLower(strings.TrimSpace(username)),
 		Email:        strings.ToLower(strings.TrimSpace(email)),
 		PasswordHash: passwordHash,
+		IsAdmin:      true,
 	}
 
-	if err := s.db.Create(user).Error; err != nil {
-		if isUniqueConstraintError(err) {
-			return nil, ErrUserAlreadyExists
+	// Keep the bootstrap gate and user create together so only one concurrent
+	// request can claim the unique signup setting for this MVP path.
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		setting := &database.Setting{
+			Key:   signupSettingKey,
+			Value: signupSettingValue,
 		}
+		if err := tx.Create(setting).Error; err != nil {
+			if isUniqueConstraintError(err) {
+				return ErrRegistrationClosed
+			}
+			return err
+		}
+
+		// MVP bootstrap: allow only the first registration, which becomes the admin user.
+		if err := tx.Create(user).Error; err != nil {
+			if isUniqueConstraintError(err) {
+				return ErrUserAlreadyExists
+			}
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -155,6 +178,9 @@ const (
 	saltLen       = 16
 	sessionTTL    = 8 * time.Hour
 	sessionLen    = 32
+
+	signupSettingKey   = "signup"
+	signupSettingValue = "completed"
 )
 
 // dummyPasswordHash is used when the username does not exist or the account is

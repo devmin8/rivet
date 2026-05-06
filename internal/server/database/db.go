@@ -17,5 +17,5 @@ func New(dbPath string) (*gorm.DB, error) {
 }
 
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &Session{}, &Project{})
+	return db.AutoMigrate(&User{}, &Setting{}, &Session{}, &Project{})
 }

@@ -35,6 +35,12 @@ func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
 				Message: "Unable to register an account with the provided credentials.",
 			})
 		}
+		if errors.Is(err, services.ErrRegistrationClosed) {
+			return c.Status(fiber.StatusForbidden).JSON(dtos.ErrorResponse{
+				Error:   "registration_closed",
+				Message: "Registration is closed because the admin user already exists.",
+			})
+		}
 
 		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
 			Error:   "internal_error",
