@@ -15,6 +15,9 @@ import (
 	"github.com/devmin8/rivet/internal/api/dtos"
 )
 
+// The CLI intentionally uses the same session cookie + CSRF flow as the console
+// for now. Bearer/deploy tokens will come later when API token scope, revocation,
+// and CI-oriented auth are introduced together.
 const DefaultTimeout = 3 * time.Second
 
 type Client struct {
@@ -74,9 +77,18 @@ func (c *Client) SignIn(ctx context.Context, username string, password string) (
 		return nil, fmt.Errorf("signin succeeded, but the server did not return a session cookie")
 	}
 
+	csrfToken := findCookieValue(cookies, api.CSRFCookieName)
+	if csrfToken == "" {
+		csrfToken = res.CSRFToken
+	}
+	if csrfToken == "" {
+		return nil, fmt.Errorf("signin succeeded, but the server did not return a CSRF token")
+	}
+
 	return &Session{
 		UserID:       res.ID,
 		SessionToken: token,
+		CSRFToken:    csrfToken,
 		ServerURL:    c.baseURL,
 		CreatedAt:    time.Now().UTC(),
 	}, nil
@@ -103,6 +115,10 @@ func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*
 }
 
 func (c *Client) UploadImage(ctx context.Context, session *Session, projectID string, imageTag string, tarballPath string) error {
+	if err := requireCSRFToken(session); err != nil {
+		return err
+	}
+
 	file, err := os.Open(tarballPath)
 	if err != nil {
 		return err
@@ -123,10 +139,8 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 	req.Header.Set("Content-Type", "application/x-tar")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set(api.ImageTagHeader, imageTag)
-	req.AddCookie(&http.Cookie{
-		Name:  api.SessionCookieName,
-		Value: session.SessionToken,
-	})
+	addSessionCookies(req, session)
+	setCSRFHeader(req, session)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -157,36 +171,40 @@ func (c *Client) post(ctx context.Context, path string, session *Session, body a
 }
 
 func (c *Client) get(ctx context.Context, path string, session *Session, wantStatus int, dest any) error {
+	_, err := c.getWithCookies(ctx, path, session, wantStatus, dest)
+	return err
+}
+
+func (c *Client) getWithCookies(ctx context.Context, path string, session *Session, wantStatus int, dest any) ([]*http.Cookie, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	if session != nil {
-		req.AddCookie(&http.Cookie{
-			Name:  api.SessionCookieName,
-			Value: session.SessionToken,
-		})
-	}
+	addSessionCookies(req, session)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != wantStatus {
-		return decodeError(resp)
+		return nil, decodeError(resp)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return resp.Cookies(), nil
 }
 
 func (c *Client) postWithCookies(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) ([]*http.Cookie, error) {
+	if err := requireCSRFToken(session); err != nil {
+		return nil, err
+	}
+
 	data, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -199,10 +217,8 @@ func (c *Client) postWithCookies(ctx context.Context, path string, session *Sess
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	if session != nil {
-		req.AddCookie(&http.Cookie{
-			Name:  api.SessionCookieName,
-			Value: session.SessionToken,
-		})
+		addSessionCookies(req, session)
+		setCSRFHeader(req, session)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -220,6 +236,41 @@ func (c *Client) postWithCookies(ctx context.Context, path string, session *Sess
 	}
 
 	return resp.Cookies(), nil
+}
+
+func requireCSRFToken(session *Session) error {
+	if session == nil || session.CSRFToken != "" {
+		return nil
+	}
+
+	return fmt.Errorf("session is missing a CSRF token; run `rivet signin` again")
+}
+
+func addSessionCookies(req *http.Request, session *Session) {
+	if session == nil {
+		return
+	}
+
+	req.AddCookie(&http.Cookie{
+		Name:  api.SessionCookieName,
+		Value: session.SessionToken,
+	})
+	if session.CSRFToken == "" {
+		return
+	}
+
+	req.AddCookie(&http.Cookie{
+		Name:  api.CSRFCookieName,
+		Value: session.CSRFToken,
+	})
+}
+
+func setCSRFHeader(req *http.Request, session *Session) {
+	if session == nil || session.CSRFToken == "" {
+		return
+	}
+
+	req.Header.Set(api.CSRFHeaderName, session.CSRFToken)
 }
 
 func decodeError(resp *http.Response) error {

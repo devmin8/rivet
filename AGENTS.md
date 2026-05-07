@@ -86,3 +86,9 @@ Rules:
 
 - Console architecture:
   `.docs/architecture/rivet-console-structure.md`
+
+---
+
+Note: No backwards-compatibility or migration paths unless explicitly requested; this is pre-first-release, so prefer simple current-state code over support for old local/session/data shapes.
+
+---

@@ -20,5 +20,11 @@ type SignInUserRequest struct {
 }
 
 type SignInUserResponse struct {
-	ID string `json:"id"`
+	ID        string `json:"id"`
+	CSRFToken string `json:"csrf_token"`
+}
+
+type CurrentUserResponse struct {
+	ID        string `json:"id"`
+	CSRFToken string `json:"csrf_token"`
 }

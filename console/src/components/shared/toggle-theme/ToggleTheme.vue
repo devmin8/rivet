@@ -3,8 +3,12 @@ import { Icon } from '@iconify/vue'
 import { useColorMode } from '@vueuse/core'
 
 import { Button } from '~/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu'
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '~/components/ui/dropdown-menu'
 
 const mode = useColorMode()
 </script>

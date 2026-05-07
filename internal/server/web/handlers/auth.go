@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"io"
+	"strings"
 
 	"github.com/devmin8/rivet/internal/api"
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
 	"github.com/devmin8/rivet/internal/server/services"
+	"github.com/devmin8/rivet/internal/server/web/requestctx"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -19,6 +24,13 @@ func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
+	if !isJSONRequest(c) {
+		return c.Status(fiber.StatusUnsupportedMediaType).JSON(dtos.ErrorResponse{
+			Error:   "unsupported_media_type",
+			Message: "Request body must be JSON.",
+		})
+	}
+
 	req := new(dtos.RegisterUserRequest)
 	if err := c.Bind().Body(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
@@ -52,6 +64,13 @@ func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
 }
 
 func (h *AuthHandler) SignInUser(c fiber.Ctx) error {
+	if !isJSONRequest(c) {
+		return c.Status(fiber.StatusUnsupportedMediaType).JSON(dtos.ErrorResponse{
+			Error:   "unsupported_media_type",
+			Message: "Request body must be JSON.",
+		})
+	}
+
 	req := new(dtos.SignInUserRequest)
 	if err := c.Bind().Body(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
@@ -85,5 +104,66 @@ func (h *AuthHandler) SignInUser(c fiber.Ctx) error {
 		SessionOnly: true,
 	})
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToSignInUserResponse(result.User))
+	csrfToken, err := newCSRFToken()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to sign in.",
+		})
+	}
+
+	setCSRFCookie(c, csrfToken)
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToSignInUserResponse(result.User, csrfToken))
+}
+
+func (h *AuthHandler) CurrentUser(c fiber.Ctx) error {
+	userID, err := requestctx.RequireUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dtos.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "Authentication is required.",
+		})
+	}
+
+	csrfToken := c.Cookies(api.CSRFCookieName)
+	if csrfToken == "" {
+		csrfToken, err = newCSRFToken()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+				Error:   "internal_error",
+				Message: "Unable to verify session.",
+			})
+		}
+
+		setCSRFCookie(c, csrfToken)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToCurrentUserResponse(userID, csrfToken))
+}
+
+func isJSONRequest(c fiber.Ctx) bool {
+	contentType := strings.ToLower(c.Get(fiber.HeaderContentType))
+	return strings.HasPrefix(contentType, fiber.MIMEApplicationJSON)
+}
+
+func setCSRFCookie(c fiber.Ctx, token string) {
+	c.Cookie(&fiber.Cookie{
+		Name:        api.CSRFCookieName,
+		Value:       token,
+		Path:        "/",
+		Secure:      true,
+		HTTPOnly:    false,
+		SameSite:    fiber.CookieSameSiteStrictMode,
+		SessionOnly: true,
+	})
+}
+
+func newCSRFToken() (string, error) {
+	token := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, token); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(token), nil
 }

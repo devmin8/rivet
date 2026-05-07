@@ -11,8 +11,16 @@ func ToRegisterUserResponse(user *database.User) dtos.RegisterUserResponse {
 	}
 }
 
-func ToSignInUserResponse(user *database.User) dtos.SignInUserResponse {
+func ToSignInUserResponse(user *database.User, csrfToken string) dtos.SignInUserResponse {
 	return dtos.SignInUserResponse{
-		ID: user.ID,
+		ID:        user.ID,
+		CSRFToken: csrfToken,
+	}
+}
+
+func ToCurrentUserResponse(userID string, csrfToken string) dtos.CurrentUserResponse {
+	return dtos.CurrentUserResponse{
+		ID:        userID,
+		CSRFToken: csrfToken,
 	}
 }
