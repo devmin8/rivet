@@ -53,6 +53,7 @@ Rules:
 - Small focused components
 - Mobile-first
 - Explicit loading/error/empty states
+- Prefer flex for 1-dimensional layouts; use grid only when true 2D row/column layout behavior is needed
 
 ---
 
@@ -86,3 +87,9 @@ Rules:
 
 - Console architecture:
   `.docs/architecture/rivet-console-structure.md`
+
+---
+
+Note: No backwards-compatibility or migration paths unless explicitly requested; this is pre-first-release, so prefer simple current-state code over support for old local/session/data shapes.
+
+---

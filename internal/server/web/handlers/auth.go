@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"io"
 
 	"github.com/devmin8/rivet/internal/api"
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
 	"github.com/devmin8/rivet/internal/server/services"
+	"github.com/devmin8/rivet/internal/server/web/requestctx"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -85,5 +89,61 @@ func (h *AuthHandler) SignInUser(c fiber.Ctx) error {
 		SessionOnly: true,
 	})
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToSignInUserResponse(result.User))
+	csrfToken, err := newCSRFToken()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to sign in.",
+		})
+	}
+
+	setCSRFCookie(c, csrfToken)
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToSignInUserResponse(result.User, csrfToken))
+}
+
+func (h *AuthHandler) CurrentUser(c fiber.Ctx) error {
+	userID, err := requestctx.RequireUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dtos.ErrorResponse{
+			Error:   "unauthorized",
+			Message: "Authentication is required.",
+		})
+	}
+
+	csrfToken := c.Cookies(api.CSRFCookieName)
+	if csrfToken == "" {
+		csrfToken, err = newCSRFToken()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+				Error:   "internal_error",
+				Message: "Unable to verify session.",
+			})
+		}
+
+		setCSRFCookie(c, csrfToken)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToCurrentUserResponse(userID, csrfToken))
+}
+
+func setCSRFCookie(c fiber.Ctx, token string) {
+	c.Cookie(&fiber.Cookie{
+		Name:        api.CSRFCookieName,
+		Value:       token,
+		Path:        "/",
+		Secure:      true,
+		HTTPOnly:    false,
+		SameSite:    fiber.CookieSameSiteStrictMode,
+		SessionOnly: true,
+	})
+}
+
+func newCSRFToken() (string, error) {
+	token := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, token); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(token), nil
 }

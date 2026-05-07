@@ -45,6 +45,7 @@ func newShipCmd(app *app) *cobra.Command {
 				return err
 			}
 
+			apiClient := app.apiClient()
 			switch strings.ToLower(strings.TrimSpace(option)) {
 			case "1", "new", "n":
 				req, err := promptCreateProject(cmd, platform)
@@ -52,7 +53,7 @@ func newShipCmd(app *app) *cobra.Command {
 					return err
 				}
 
-				project, err := app.apiClient().CreateProject(ctx, session, req)
+				project, err := apiClient.CreateProject(ctx, session, req)
 				if err != nil {
 					return err
 				}
@@ -66,7 +67,7 @@ func newShipCmd(app *app) *cobra.Command {
 					return err
 				}
 
-				project, err := app.apiClient().GetProject(ctx, session, id)
+				project, err := apiClient.GetProject(ctx, session, id)
 				if err != nil {
 					return err
 				}

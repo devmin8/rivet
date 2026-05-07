@@ -19,6 +19,11 @@ type SignInUserRequest struct {
 	Password string `json:"password" validate:"required,min=15,max=128"`
 }
 
-type SignInUserResponse struct {
-	ID string `json:"id"`
+type AuthenticatedUserResponse struct {
+	ID        string `json:"id"`
+	CSRFToken string `json:"csrf_token"`
 }
+
+type SignInUserResponse = AuthenticatedUserResponse
+
+type CurrentUserResponse = AuthenticatedUserResponse

@@ -7,11 +7,11 @@ src/
   main.ts
   router.ts
 
-  lib/
+  lib/              # common utilities can go here as individual files grouped based on functionalities
     http.ts
     env.ts
     errors.ts
-    utils.ts
+    query-keys.ts
 
   components/
     ui/        # shadcn-vue generated components
@@ -22,7 +22,6 @@ src/
     auth/
       api.ts
       queries.ts
-      keys.ts
       types.ts
       pages/
       components/
@@ -30,7 +29,6 @@ src/
     projects/
       api.ts
       queries.ts
-      keys.ts
       types.ts
       pages/
       components/
@@ -55,7 +53,7 @@ src/
 - Keep shadcn-vue components only in `components/ui`.
 - Put API calls in `features/<feature>/api.ts`.
 - Put TanStack Query wrappers in `features/<feature>/queries.ts`.
-- Put query keys in `features/<feature>/keys.ts`.
+- Put shared TanStack Query keys in `lib/query-keys.ts` so features can invalidate each other without importing feature internals.
 - Put feature DTOs/types in `features/<feature>/types.ts`.
 - Use Pinia only for client/app state, not server data.
 - Use TanStack Query for all backend/server data.

@@ -27,6 +27,9 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Post("/auth/signin", authHandler.SignInUser)
 	
 	v1.Use(middlewares.RequireAuth(authService))
+	v1.Use(middlewares.RequireCSRF())
+
+	v1.Get("/auth/me", authHandler.CurrentUser)
 
 
 	projectService := services.NewProjectService(webCtx.db, webCtx.docker)

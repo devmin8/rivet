@@ -13,6 +13,7 @@ const sessionFileMode = 0600
 type Session struct {
 	UserID       string    `json:"user_id"`
 	SessionToken string    `json:"session_token"`
+	CSRFToken    string    `json:"csrf_token,omitempty"`
 	ServerURL    string    `json:"server_url"`
 	CreatedAt    time.Time `json:"created_at"`
 }
