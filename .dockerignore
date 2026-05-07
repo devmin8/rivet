@@ -13,6 +13,7 @@
 
 Dockerfile
 node_modules
+console/
 
 README.md
 scripts/

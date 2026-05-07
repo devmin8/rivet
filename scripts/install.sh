@@ -31,6 +31,8 @@ Environment variables:
                       Default: \$HOME/.rivet
   🐳 RIVET_SERVER_IMAGE  Server image to pull.
                       Default: ghcr.io/devmin8/rivet-server:latest
+  🖥️  RIVET_CONSOLE_IMAGE Console image to pull.
+                      Default: ghcr.io/devmin8/rivet-console:latest
   🔌 CADDY_HTTP_BIND     Host-to-container HTTP port binding.
                       Default: 80:80
   🔐 CADDY_HTTPS_BIND    Host-to-container HTTPS port binding.
@@ -130,6 +132,7 @@ guided_setup() {
 	prompt_required RIVET_DOMAIN "🌐 Domain"
 	prompt_value RIVET_HOME "📦 Persistent state directory" "$HOME/.rivet"
 	prompt_value RIVET_SERVER_IMAGE "🐳 Server image" "ghcr.io/devmin8/rivet-server:latest"
+	prompt_value RIVET_CONSOLE_IMAGE "🖥️  Console image" "ghcr.io/devmin8/rivet-console:latest"
 	prompt_bool RIVET_RESET_DATA "🧹 Delete existing Rivet data before installing?" "0"
 
 	log ""
@@ -148,6 +151,7 @@ setup_configuration() {
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
 	RIVET_DOCKER_SOCK=${RIVET_DOCKER_SOCK:-"/var/run/docker.sock"}
 	RIVET_SERVER_IMAGE=${RIVET_SERVER_IMAGE:-"ghcr.io/devmin8/rivet-server:latest"}
+	RIVET_CONSOLE_IMAGE=${RIVET_CONSOLE_IMAGE:-"ghcr.io/devmin8/rivet-console:latest"}
 
 	# Caddy config
 	CADDY_DIR="$RIVET_HOME/caddy"
@@ -168,7 +172,7 @@ ensure_host() {
 cleanup() {
 	log "🧹 Cleaning up old Rivet containers"
 
-	docker rm -f rivet-server rivet-caddy 2>/dev/null || true
+	docker rm -f rivet-server rivet-console rivet-caddy 2>/dev/null || true
 	docker network rm "$RIVET_NETWORK_NAME" 2>/dev/null || true
 
 	if [ "${RIVET_RESET_DATA:-0}" = "1" ]; then
@@ -201,6 +205,11 @@ pull_rivet_server() {
 	docker pull "$RIVET_SERVER_IMAGE" >/dev/null
 }
 
+pull_rivet_console() {
+	log "🐳 Pulling $RIVET_CONSOLE_IMAGE"
+	docker pull "$RIVET_CONSOLE_IMAGE" >/dev/null
+}
+
 start_rivet_server() {
 	log "🚀 Starting rivet-server"
 
@@ -216,6 +225,16 @@ start_rivet_server() {
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
 		-v "$RIVET_DOCKER_SOCK:/var/run/docker.sock" \
 		"$RIVET_SERVER_IMAGE" >/dev/null
+}
+
+start_rivet_console() {
+	log "🚀 Starting rivet-console"
+
+	docker run -d \
+		--name rivet-console \
+		--network "$RIVET_NETWORK_NAME" \
+		--restart unless-stopped \
+		"$RIVET_CONSOLE_IMAGE" >/dev/null
 }
 
 start_caddy() {
@@ -248,10 +267,12 @@ main() {
 
 	cleanup
 	pull_rivet_server
+	pull_rivet_console
 	write_caddyfile
 	ensure_network
 	# Caddy must be up before rivet-server: the server POSTs to rivet-caddy on startup.
 	start_caddy
+	start_rivet_console
 	start_rivet_server
 
 	log "✅ Rivet is running at https://$RIVET_DOMAIN"

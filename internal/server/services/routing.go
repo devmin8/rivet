@@ -17,14 +17,14 @@ import (
 )
 
 type caddyLoader interface {
-	Load(ctx context.Context, routes []caddy.Route) error
+	Load(ctx context.Context, defaultRoute caddy.DefaultRoute, routes []caddy.Route) error
 }
 
 type RoutingService struct {
-	db          *gorm.DB
-	caddy       caddyLoader
-	serverRoute caddy.Route
-	log         *slog.Logger
+	db           *gorm.DB
+	caddy        caddyLoader
+	defaultRoute caddy.DefaultRoute
+	log          *slog.Logger
 
 	mu       sync.Mutex
 	lastHash string
@@ -34,10 +34,12 @@ func NewRoutingService(db *gorm.DB, caddyClient caddyLoader, serverDomain string
 	return &RoutingService{
 		db:    db,
 		caddy: caddyClient,
-		serverRoute: caddy.Route{
-			Domain:        strings.TrimSpace(serverDomain),
-			ContainerName: "rivet-server",
-			Port:          serverPort,
+		defaultRoute: caddy.DefaultRoute{
+			Domain:               strings.TrimSpace(serverDomain),
+			APIContainerName:     "rivet-server",
+			APIPort:              serverPort,
+			ConsoleContainerName: "rivet-console",
+			ConsolePort:          80,
 		},
 		log: log,
 	}
@@ -52,12 +54,12 @@ func (s *RoutingService) Sync(ctx context.Context) error {
 		return err
 	}
 
-	hash := hashRoutes(routes)
+	hash := hashRoutes(s.defaultRoute, routes)
 	if hash == s.lastHash {
 		return nil
 	}
 
-	if err := s.caddy.Load(ctx, routes); err != nil {
+	if err := s.caddy.Load(ctx, s.defaultRoute, routes); err != nil {
 		return err
 	}
 
@@ -81,8 +83,7 @@ func (s *RoutingService) routes() ([]caddy.Route, error) {
 		return nil, err
 	}
 
-	routes := make([]caddy.Route, 0, len(projects)+1)
-	routes = append(routes, s.serverRoute)
+	routes := make([]caddy.Route, 0, len(projects))
 
 	for _, project := range projects {
 		port, err := strconv.Atoi(strings.TrimSpace(project.Port))
@@ -107,8 +108,17 @@ func (s *RoutingService) routes() ([]caddy.Route, error) {
 	return routes, nil
 }
 
-func hashRoutes(routes []caddy.Route) string {
+func hashRoutes(defaultRoute caddy.DefaultRoute, routes []caddy.Route) string {
 	h := sha256.New()
+	fmt.Fprintf(
+		h,
+		"%s\x00%s\x00%d\x00%s\x00%d\x00",
+		defaultRoute.Domain,
+		defaultRoute.APIContainerName,
+		defaultRoute.APIPort,
+		defaultRoute.ConsoleContainerName,
+		defaultRoute.ConsolePort,
+	)
 	for _, route := range routes {
 		fmt.Fprintf(h, "%s\x00%s\x00%d\x00", route.Domain, route.ContainerName, route.Port)
 	}

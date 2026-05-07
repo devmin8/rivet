@@ -1,8 +1,13 @@
-# GHA - Publish Server Image
+# GHA - Publish Images
 
-This workflow builds the server Docker image and publishes it to GitHub Container Registry (GHCR).
+Rivet publishes the server and console as separate Docker images in GitHub Container Registry (GHCR).
 
-Workflow file: `.github/workflows/publish-server-image.yml`
+Workflow files:
+
+- `.github/workflows/publish-server-image.yml`
+- `.github/workflows/publish-console-image.yml`
+
+The workflows stay separate because the server and console have different build contexts, runtime dependencies, and release cadence. Publishing them independently keeps rebuilds scoped to the artifact that changed, reduces release blast radius, and matches the installer contract where `RIVET_SERVER_IMAGE` and `RIVET_CONSOLE_IMAGE` are configured separately.
 
 ## When It Runs
 
@@ -13,7 +18,7 @@ on:
   workflow_dispatch:
 ```
 
-Run it from the GitHub Actions UI when a server image needs to be published.
+Run the matching workflow from the GitHub Actions UI when an image needs to be published.
 
 ## What It Publishes
 
@@ -24,6 +29,58 @@ ghcr.io/${{ github.repository }}-server
 ```
 
 For this repo, the image name follows the repository name and adds `-server`.
+
+The console workflow pushes to:
+
+```text
+ghcr.io/${{ github.repository }}-console
+```
+
+For this repo, the image name follows the repository name and adds `-console`.
+
+## Console Image Workflow
+
+Workflow file: `.github/workflows/publish-console-image.yml`
+
+This workflow builds the Vue console as static assets and packages them behind Nginx.
+
+It uses:
+
+```yaml
+context: ./console
+file: ./console/Dockerfile
+```
+
+The console Dockerfile has two stages:
+
+| Stage | Purpose |
+| --- | --- |
+| `oven/bun` build stage | Installs console dependencies and runs the Vite production build |
+| `nginx:alpine` runtime stage | Serves the built static files with the SPA fallback config |
+
+The workflow passes:
+
+```yaml
+build-args: |
+  VITE_RIVET_API_URL=/api/v1
+```
+
+That value is intentionally relative. In production, the browser loads the console and calls the API on the same public origin, for example `https://console.example.com/api/v1`. Caddy handles `/api` by proxying to `rivet-server`, so the console image does not need to know the internal server container name or a public API subdomain.
+
+The console image is published with the same tag policy as the server image:
+
+| Tag | Meaning |
+| --- | --- |
+| `latest` | Convenient moving tag for the newest published console |
+| `sha-<commit>` | Stable tag tied to the exact commit that produced the console image |
+
+Production installs use the image through:
+
+```sh
+RIVET_CONSOLE_IMAGE=ghcr.io/devmin8/rivet-console:latest
+```
+
+Use the `sha-<commit>` tag instead when a deployment needs repeatable image pinning.
 
 ## Tags
 
@@ -101,9 +158,13 @@ Only one publish run per branch or ref can run at a time.
 
 `cancel-in-progress: false` means an older run is allowed to finish instead of being cancelled. This avoids half-published image work and keeps tag updates predictable.
 
-Because the group includes `${{ github.ref }}`, runs from different branches can still run at the same time. Run this workflow from the intended release branch, since the `latest` tag is shared for the image.
+The console workflow uses the same pattern with `publish-console-image-${{ github.ref }}`.
+
+Because the group includes `${{ github.ref }}`, runs from different branches can still run at the same time. Run workflows from the intended release branch, since the `latest` tag is shared for each image.
 
 ## Build Context And Dockerfile
+
+Server workflow:
 
 ```yaml
 context: .
@@ -111,6 +172,15 @@ file: ./Dockerfile
 ```
 
 The Docker build uses the repository root as the build context and the root `Dockerfile`.
+
+Console workflow:
+
+```yaml
+context: ./console
+file: ./console/Dockerfile
+```
+
+The Docker build uses the console folder as the build context and bakes `VITE_RIVET_API_URL=/api/v1` into the static frontend so production requests stay same-origin behind the reverse proxy.
 
 ## Push Behavior
 
@@ -158,6 +228,8 @@ The workflow uses the GitHub Actions cache backend for Docker layers.
 | `type=gha` | Stores and reads cache through GitHub Actions cache |
 | `scope=rivet-server` | Keeps this cache separate from other Docker builds |
 | `mode=max` | Saves as much reusable layer data as BuildKit can export |
+
+The console workflow uses the same pattern with `scope=rivet-console`.
 
 This makes later image builds faster, especially when dependency layers have not changed.
 

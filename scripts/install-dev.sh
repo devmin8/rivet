@@ -41,6 +41,8 @@ ensure_repository() {
 	[ -f "$REPO_ROOT/go.mod" ] || fail "go.mod not found at $REPO_ROOT"
 	[ -d "$REPO_ROOT/cmd/rivet-server" ] || fail "cmd/rivet-server not found at $REPO_ROOT"
 	[ -f "$REPO_ROOT/Dockerfile" ] || fail "Dockerfile not found at $REPO_ROOT"
+	[ -f "$REPO_ROOT/console/Dockerfile" ] || fail "console/Dockerfile not found at $REPO_ROOT"
+	[ -f "$REPO_ROOT/console/package.json" ] || fail "console/package.json not found at $REPO_ROOT"
 	[ -S "$RIVET_DOCKER_SOCK" ] || fail "Docker socket not found at $RIVET_DOCKER_SOCK"
 }
 
@@ -48,7 +50,7 @@ cleanup() {
 	log "🧹 Cleaning up"
 
 	# Remove Rivet containers
-	docker rm -f rivet-server rivet-caddy 2>/dev/null || true
+	docker rm -f rivet-server rivet-console rivet-caddy 2>/dev/null || true
 
 	# Remove Rivet network
 	docker network rm "$RIVET_NETWORK_NAME" 2>/dev/null || true
@@ -119,6 +121,24 @@ build_rivet_server() {
 	docker build -t rivet-server:$APP_ENV "$REPO_ROOT"
 }
 
+build_rivet_console() {
+	log "Building rivet-console:$APP_ENV from $REPO_ROOT/console"
+	docker build \
+		--build-arg VITE_RIVET_API_URL=/api/v1 \
+		-t rivet-console:$APP_ENV \
+		"$REPO_ROOT/console"
+}
+
+start_rivet_console() {
+	log "Starting rivet-console"
+
+	docker run -d \
+		--name rivet-console \
+		--network "$RIVET_NETWORK_NAME" \
+		--restart unless-stopped \
+		rivet-console:$APP_ENV >/dev/null
+}
+
 main() {
 	setup_configuration
 	ensure_repository
@@ -126,10 +146,12 @@ main() {
 
 	cleanup
 	build_rivet_server
+	build_rivet_console
 	write_caddyfile
 	ensure_network
 	# Caddy must be up before rivet-server: the server POSTs to rivet-caddy on startup.
 	start_caddy
+	start_rivet_console
 	start_rivet_server
 
 	log "✅ Rivet is running at http://$RIVET_DOMAIN"

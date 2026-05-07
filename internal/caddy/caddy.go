@@ -20,6 +20,14 @@ type Route struct {
 	Port          int
 }
 
+type DefaultRoute struct {
+	Domain               string
+	APIContainerName     string
+	APIPort              int
+	ConsoleContainerName string
+	ConsolePort          int
+}
+
 type Client struct {
 	BaseURL string
 	HTTP    *http.Client
@@ -36,8 +44,8 @@ func New(baseURL string, appEnv config.AppEnv) *Client {
 	}
 }
 
-func (c *Client) Load(ctx context.Context, routes []Route) error {
-	cfg := buildCaddyConfig(c.AppEnv, routes)
+func (c *Client) Load(ctx context.Context, defaultRoute DefaultRoute, routes []Route) error {
+	cfg := buildCaddyConfig(c.AppEnv, defaultRoute, routes)
 
 	body, err := json.Marshal(cfg)
 	if err != nil {
@@ -65,34 +73,18 @@ func (c *Client) Load(ctx context.Context, routes []Route) error {
 	return nil
 }
 
-func buildCaddyConfig(env config.AppEnv, routes []Route) map[string]any {
+func buildCaddyConfig(env config.AppEnv, defaultRoute DefaultRoute, routes []Route) map[string]any {
 	sorted := append([]Route(nil), routes...)
 
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Domain < sorted[j].Domain
 	})
 
-	caddyRoutes := make([]any, 0, len(sorted))
+	caddyRoutes := make([]any, 0, len(sorted)+2)
+	caddyRoutes = append(caddyRoutes, defaultAppRoute(defaultRoute))
 
 	for _, r := range sorted {
-		caddyRoutes = append(caddyRoutes, map[string]any{
-			"match": []any{
-				map[string]any{
-					"host": []string{r.Domain},
-				},
-			},
-			"handle": []any{
-				map[string]any{
-					"handler": "reverse_proxy",
-					"upstreams": []any{
-						map[string]any{
-							"dial": fmt.Sprintf("%s:%d", r.ContainerName, r.Port),
-						},
-					},
-				},
-			},
-			"terminal": true,
-		})
+		caddyRoutes = append(caddyRoutes, projectRoute(r))
 	}
 	caddyRoutes = append(caddyRoutes, notFoundRoute())
 
@@ -113,6 +105,60 @@ func buildCaddyConfig(env config.AppEnv, routes []Route) map[string]any {
 				"servers": map[string]any{
 					"rivet": server,
 				},
+			},
+		},
+	}
+}
+
+func defaultAppRoute(r DefaultRoute) map[string]any {
+	return map[string]any{
+		"match": []any{
+			map[string]any{
+				"host": []string{r.Domain},
+			},
+		},
+		"handle": []any{
+			map[string]any{
+				"handler": "subroute",
+				"routes": []any{
+					map[string]any{
+						"match": []any{
+							map[string]any{
+								"path": []string{"/api", "/api/*"},
+							},
+						},
+						"handle":   []any{reverseProxy(r.APIContainerName, r.APIPort)},
+						"terminal": true,
+					},
+					map[string]any{
+						"handle":   []any{reverseProxy(r.ConsoleContainerName, r.ConsolePort)},
+						"terminal": true,
+					},
+				},
+			},
+		},
+		"terminal": true,
+	}
+}
+
+func projectRoute(r Route) map[string]any {
+	return map[string]any{
+		"match": []any{
+			map[string]any{
+				"host": []string{r.Domain},
+			},
+		},
+		"handle":   []any{reverseProxy(r.ContainerName, r.Port)},
+		"terminal": true,
+	}
+}
+
+func reverseProxy(containerName string, port int) map[string]any {
+	return map[string]any{
+		"handler": "reverse_proxy",
+		"upstreams": []any{
+			map[string]any{
+				"dial": fmt.Sprintf("%s:%d", containerName, port),
 			},
 		},
 	}
