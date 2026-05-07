@@ -5,10 +5,6 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 
-import { Alert, AlertDescription } from '~/components/ui/alert'
-import { Button } from '~/components/ui/button'
-import { Field, FieldError, FieldGroup, FieldLabel } from '~/components/ui/field'
-import { Input } from '~/components/ui/input'
 import { useSignIn } from '~/features/auth/queries'
 import { ApiError } from '~/lib/errors'
 

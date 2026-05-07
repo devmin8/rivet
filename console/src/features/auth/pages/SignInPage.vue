@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { ConsoleLogo } from '~/components/shared/console-logo'
-import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import SignInForm from '~/features/auth/components/SignInForm.vue'
 </script>
 

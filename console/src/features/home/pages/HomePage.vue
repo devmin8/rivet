@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { ConsoleLogo } from '~/components/shared/console-logo'
-import { ToggleTheme } from '~/components/shared/toggle-theme'
 import { useCurrentUser } from '~/features/auth/queries'
 
 const currentUser = useCurrentUser()
