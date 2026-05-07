@@ -124,7 +124,6 @@ build_rivet_server() {
 build_rivet_console() {
 	log "Building rivet-console:$APP_ENV from $REPO_ROOT/console"
 	docker build \
-		--build-arg VITE_RIVET_API_URL=/api/v1 \
 		-t rivet-console:$APP_ENV \
 		"$REPO_ROOT/console"
 }

@@ -59,8 +59,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VITE_RIVET_API_URL=/api/v1
           # GitHub Actions cache backend:
           # https://docs.docker.com/build/cache/backends/gha/
           cache-from: type=gha,scope=rivet-console

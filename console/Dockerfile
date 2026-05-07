@@ -8,8 +8,6 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY . .
-ARG VITE_RIVET_API_URL=/api/v1
-ENV VITE_RIVET_API_URL=$VITE_RIVET_API_URL
 RUN bun run build-only
 
 FROM nginx:1.29-alpine
