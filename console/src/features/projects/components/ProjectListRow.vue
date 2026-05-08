@@ -5,12 +5,12 @@ import { computed } from 'vue'
 import ProjectActionsMenu from '~/features/projects/components/ProjectActionsMenu.vue'
 import ProjectStatsInline from '~/features/projects/components/ProjectStatsInline.vue'
 import ProjectStatusBadge from '~/features/projects/components/ProjectStatusBadge.vue'
-import type { ProjectListItem } from '~/features/projects/types'
+import type { ProjectAction, ProjectListItem } from '~/features/projects/types'
 
 const props = defineProps<{
   item: ProjectListItem
   isLoadingStats: boolean
-  pendingAction: 'start' | 'stop' | 'delete' | null
+  pendingAction: ProjectAction | null
 }>()
 
 const emit = defineEmits<{

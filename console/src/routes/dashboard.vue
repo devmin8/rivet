@@ -10,6 +10,7 @@ import {
   useStartProject,
   useStopProject,
 } from '~/features/projects/queries'
+import type { ProjectAction } from '~/features/projects/types'
 import { ApiError } from '~/lib/errors'
 
 const projectList = useProjectListData()
@@ -17,8 +18,7 @@ const startProject = useStartProject()
 const stopProject = useStopProject()
 const deleteProject = useDeleteProject()
 
-const pendingProjectId = ref<string | null>(null)
-const pendingAction = ref<'start' | 'stop' | 'delete' | null>(null)
+const pendingActions = ref(new Map<string, ProjectAction>())
 
 const actionError = computed(() => {
   const error = startProject.error.value ?? stopProject.error.value ?? deleteProject.error.value
@@ -39,22 +39,34 @@ function handleDelete(projectId: string) {
 
 function runProjectAction(
   projectId: string,
-  action: 'start' | 'stop' | 'delete',
+  action: ProjectAction,
   mutate: () => Promise<unknown>,
 ) {
+  if (pendingActions.value.has(projectId)) {
+    return
+  }
+
   startProject.reset()
   stopProject.reset()
   deleteProject.reset()
 
-  pendingProjectId.value = projectId
-  pendingAction.value = action
+  setPendingAction(projectId, action)
 
   void mutate()
     .catch(() => undefined)
     .finally(() => {
-      pendingProjectId.value = null
-      pendingAction.value = null
+      clearPendingAction(projectId)
     })
+}
+
+function setPendingAction(projectId: string, action: ProjectAction) {
+  pendingActions.value = new Map(pendingActions.value).set(projectId, action)
+}
+
+function clearPendingAction(projectId: string) {
+  const nextPendingActions = new Map(pendingActions.value)
+  nextPendingActions.delete(projectId)
+  pendingActions.value = nextPendingActions
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -127,8 +139,7 @@ function formatStatsFreshness(asOf: string | undefined): string {
         v-else-if="!projectList.isError.value"
         :items="projectList.items.value"
         :is-loading-stats="projectList.isLoadingStats.value"
-        :pending-project-id="pendingProjectId"
-        :pending-action="pendingAction"
+        :pending-actions="pendingActions"
         @start="handleStart"
         @stop="handleStop"
         @delete="handleDelete"

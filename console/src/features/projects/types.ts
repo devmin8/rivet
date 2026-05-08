@@ -1,6 +1,7 @@
 export type ProjectStatus = 'running' | 'stopped' | 'deploying' | 'failed'
 export type ProjectDesiredStatus = 'running' | 'stopped'
 export type ProjectDisplayStatus = 'running' | 'paused' | 'stopped'
+export type ProjectAction = 'start' | 'stop' | 'delete'
 
 export interface Project {
   id: string
