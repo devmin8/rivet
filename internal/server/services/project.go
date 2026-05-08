@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/devmin8/rivet/internal/docker"
@@ -20,6 +22,12 @@ var ErrNoTargetImage = errors.New("project has no target image")
 type ProjectService struct {
 	db     *gorm.DB
 	docker *docker.Client
+	log    *slog.Logger
+
+	// statsMu prevents concurrent dashboard requests from stampeding Docker when the stats cache expires.
+	statsMu sync.Mutex
+	// statsCache stores recent runtime stats and raw CPU samples used to calculate the next CPU percent.
+	statsCache map[string]projectRuntimeStatsCacheEntry
 }
 
 type CreateProjectRequest struct {
@@ -32,7 +40,16 @@ type CreateProjectRequest struct {
 }
 
 func NewProjectService(db *gorm.DB, docker *docker.Client) *ProjectService {
-	return &ProjectService{db: db, docker: docker}
+	return NewProjectServiceWithLogger(db, docker, nil)
+}
+
+func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, log *slog.Logger) *ProjectService {
+	return &ProjectService{
+		db:         db,
+		docker:     docker,
+		log:        log,
+		statsCache: make(map[string]projectRuntimeStatsCacheEntry),
+	}
 }
 
 func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Project, error) {

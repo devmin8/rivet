@@ -20,21 +20,21 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Get("/health", func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
-	
+
 	authService := services.NewAuthService(webCtx.db, webCtx.log)
 	authHandler := handlers.NewAuthHandler(authService)
 	v1.Post("/auth/register", authHandler.RegisterUser)
 	v1.Post("/auth/signin", authHandler.SignInUser)
-	
+
 	v1.Use(middlewares.RequireAuth(authService))
 	v1.Use(middlewares.RequireCSRF())
 
 	v1.Get("/auth/me", authHandler.CurrentUser)
 
-
-	projectService := services.NewProjectService(webCtx.db, webCtx.docker)
+	projectService := services.NewProjectServiceWithLogger(webCtx.db, webCtx.docker, webCtx.log)
 	projectHandler := handlers.NewProjectHandler(projectService, webCtx.routes, webCtx.log)
 	v1.Post("/projects", projectHandler.CreateProject)
+	v1.Get("/projects/stats", projectHandler.GetProjectStats)
 	v1.Get("/projects/:id", projectHandler.GetProject)
 	v1.Post("/projects/:id/deploy", projectHandler.DeployProject)
 
