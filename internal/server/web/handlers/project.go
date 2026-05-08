@@ -85,6 +85,20 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
 }
 
+func (h *ProjectHandler) GetProjectStats(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	stats, err := h.projectService.ProjectRuntimeStats(c.Context(), userID, c.Query("ids"))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to get project stats.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectRuntimeStatsResponse(stats))
+}
+
 func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
 	userID, _ := requestctx.RequireUserID(c)
 

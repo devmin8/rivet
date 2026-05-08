@@ -3,6 +3,7 @@ package mapper
 import (
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/database"
+	"github.com/devmin8/rivet/internal/server/services"
 )
 
 func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectResponse {
@@ -26,5 +27,28 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 		UpdatedAt:       project.UpdatedAt,
 		CreatedByID:     project.CreatedByID,
 		UpdatedByID:     project.UpdatedByID,
+	}
+}
+
+func ToProjectRuntimeStatsResponse(stats services.ProjectRuntimeStatsResponse) dtos.ProjectRuntimeStatsResponse {
+	items := make([]dtos.ProjectRuntimeStatsItem, 0, len(stats.Items))
+	for _, item := range stats.Items {
+		items = append(items, dtos.ProjectRuntimeStatsItem{
+			ProjectID:              item.ProjectID,
+			CPUPercent:             item.CPUPercent,
+			CPUSampleWindowSeconds: item.CPUSampleWindowSeconds,
+			MemoryUsageBytes:       item.MemoryUsageBytes,
+			MemoryLimitBytes:       item.MemoryLimitBytes,
+			MemoryPercent:          item.MemoryPercent,
+			NetworkRxBytes:         item.NetworkRxBytes,
+			NetworkTxBytes:         item.NetworkTxBytes,
+			Pids:                   item.Pids,
+		})
+	}
+
+	return dtos.ProjectRuntimeStatsResponse{
+		AsOf:  stats.AsOf,
+		Stale: stats.Stale,
+		Items: items,
 	}
 }
