@@ -59,3 +59,47 @@ src/
 - Use TanStack Query for all backend/server data.
 - Do not create `services`, `repositories`, `models`, `controllers`, or `domain` folders.
 - Add new folders only when repeated pain appears.
+
+## Component Imports
+
+`console/src/components` is the shared component registry. Vite uses `unplugin-vue-components` to scan that folder and auto-import matching Vue components when their PascalCase tags appear in templates.
+
+```vue
+<template>
+  <Button>Save</Button>
+  <ConsoleLogo />
+</template>
+```
+
+Outside `console/src/components/**`, do not manually import from `~/components`. The plugin handles those imports.
+
+```ts
+// Do not do this outside src/components
+import { Button } from "~/components/ui/button";
+```
+
+Feature-local components are different. Files under `features/<feature>/components` are not global, so pages and nearby feature files should import them explicitly.
+
+```ts
+import SignInForm from "../components/SignInForm.vue";
+```
+
+## Component Types
+
+The auto-import plugin writes the generated TypeScript declarations to:
+
+```txt
+console/components.d.ts
+```
+
+That file tells TypeScript and editors which global component tags exist. It is generated, but committed.
+
+When a component is added, removed, or renamed under `console/src/components/**`, run:
+
+```sh
+bun run --cwd console components:dts
+```
+
+The pre-commit hook also checks staged changes under `console/src/components/**`, regenerates `console/components.d.ts`, and stages it before the commit.
+
+During normal app builds, Vite runs `unplugin-vue-components` and injects the real imports. During the pre-commit type update, the script only runs the component plugin hook so it can refresh `components.d.ts` without building `dist`.
