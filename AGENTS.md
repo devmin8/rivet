@@ -17,7 +17,7 @@ Rivet = self-hosted PaaS.
 - Add only necessary files
 - No tests/builds unless asked
 - Prefer in-place edits
-- Explain changes briefly
+- Briefly explain changes
 
 ---
 
@@ -46,14 +46,25 @@ Stack:
 Rules:
 
 - No raw fetch in components
-- API calls in `api.ts`
-- TanStack Query for server state
-- Pinia only for client/UI state
+- Keep API calls in `api.ts`
+- TanStack Query = server state
+- Pinia = client/UI state only
 - No `any`
 - Small focused components
 - Mobile-first
 - Explicit loading/error/empty states
-- Prefer flex for 1-dimensional layouts; use grid only when true 2D row/column layout behavior is needed
+- Prefer flex for 1D layouts; use grid only for true 2D layouts
+
+### Components
+
+- `console/src/components` = global registry via `unplugin-vue-components`
+- Outside `console/src/components/**`, do not import from `~/components`; `unplugin-vue-components` auto-imports those components when you use their PascalCase tags
+- Feature-local components must be imported explicitly
+- After adding/removing/renaming components in `console/src/components/**`, run:
+
+```bash
+bun run --cwd console components:dts
+```
 
 ---
 
@@ -79,7 +90,7 @@ Rules:
 - Never expose secrets
 - Avoid unsafe HTML
 - Treat auth/token flows carefully
-- Follow OWASP recommendations
+- Follow OWASP guidance
 
 ---
 
@@ -90,6 +101,7 @@ Rules:
 
 ---
 
-Note: No backwards-compatibility or migration paths unless explicitly requested; this is pre-first-release, so prefer simple current-state code over support for old local/session/data shapes.
+## Notes
 
----
+- No backwards compatibility or migrations unless requested
+- Pre-first-release: prefer simple current-state code over legacy support

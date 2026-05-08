@@ -9,10 +9,12 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "components:dts": "bun run scripts/update-components-dts.ts",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "oxfmt src/"
+    "format": "oxfmt src/",
+    "prepare": "test ! -d ../.git || (cd .. && ./console/node_modules/.bin/husky .husky)"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
@@ -41,6 +43,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.60.0",
     "eslint-plugin-vue": "~10.8.0",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "npm-run-all2": "^8.0.4",
     "oxfmt": "^0.45.0",

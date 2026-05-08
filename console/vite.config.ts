@@ -8,7 +8,15 @@ import Components from "unplugin-vue-components/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [Components(), vue(), tailwindcss(), vueDevTools()],
+  plugins: [
+    Components({
+      dirs: ["src/components"],
+      dts: "components.d.ts",
+    }),
+    vue(),
+    tailwindcss(),
+    vueDevTools(),
+  ],
   server: {
     proxy: {
       "/api": {

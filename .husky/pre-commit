@@ -1,0 +1,8 @@
+changed_components="$(git diff --cached --name-only --diff-filter=ACMRD -- console/src/components)"
+
+if [ -z "$changed_components" ]; then
+  exit 0
+fi
+
+bun run --cwd console components:dts
+git add console/components.d.ts

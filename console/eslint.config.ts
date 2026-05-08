@@ -29,5 +29,25 @@ export default defineConfigWithVueTs(
     },
   },
 
+  {
+    name: "app/no-global-component-imports",
+    files: ["src/**/*.{vue,ts,mts,tsx}"],
+    ignores: ["src/components/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["~/components", "~/components/**"],
+              message:
+                "Do not import from ~/components outside src/components; unplugin-vue-components auto-imports those components when you use their PascalCase tags.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   skipFormatting,
 );
