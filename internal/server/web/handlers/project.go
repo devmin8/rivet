@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
@@ -24,6 +25,20 @@ type RouteSyncer interface {
 
 func NewProjectHandler(projectService *services.ProjectService, routes RouteSyncer, log *slog.Logger) *ProjectHandler {
 	return &ProjectHandler{projectService: projectService, routes: routes, log: log}
+}
+
+func (h *ProjectHandler) ListProjects(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	projects, err := h.projectService.ListProjects(userID, strings.EqualFold(c.Query("include_deleted"), "true"))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to list projects.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToListProjectsResponse(projects))
 }
 
 func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
@@ -110,6 +125,45 @@ func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
 	h.syncRoutes(c.Context(), project.ID)
 
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) StartProject(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	project, err := h.projectService.StartProject(c.Context(), c.Params("id"), userID)
+	if err != nil {
+		return projectError(c, err, "Unable to start project.")
+	}
+
+	h.syncRoutes(c.Context(), project.ID)
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) StopProject(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+
+	project, err := h.projectService.StopProject(c.Context(), c.Params("id"), userID)
+	if err != nil {
+		return projectError(c, err, "Unable to stop project.")
+	}
+
+	h.syncRoutes(c.Context(), project.ID)
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+}
+
+func (h *ProjectHandler) DeleteProject(c fiber.Ctx) error {
+	userID, _ := requestctx.RequireUserID(c)
+	projectID := c.Params("id")
+
+	if err := h.projectService.DeleteProject(c.Context(), projectID, userID); err != nil {
+		return projectError(c, err, "Unable to delete project.")
+	}
+
+	h.syncRoutes(c.Context(), projectID)
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *ProjectHandler) syncRoutes(ctx context.Context, projectID string) {

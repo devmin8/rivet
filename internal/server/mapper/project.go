@@ -30,6 +30,15 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 	}
 }
 
+func ToListProjectsResponse(projects []database.Project) dtos.ListProjectsResponse {
+	items := make([]dtos.CreateProjectResponse, 0, len(projects))
+	for i := range projects {
+		items = append(items, ToCreateProjectResponse(&projects[i]))
+	}
+
+	return dtos.ListProjectsResponse{Items: items}
+}
+
 func ToProjectRuntimeStatsResponse(stats services.ProjectRuntimeStatsResponse) dtos.ProjectRuntimeStatsResponse {
 	items := make([]dtos.ProjectRuntimeStatsItem, 0, len(stats.Items))
 	for _, item := range stats.Items {
