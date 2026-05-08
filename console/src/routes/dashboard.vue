@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TriangleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import ProjectEmptyState from '~/features/projects/components/ProjectEmptyState.vue'
@@ -114,7 +115,15 @@ function formatStatsFreshness(asOf: string | undefined): string {
           <p class="text-muted-foreground text-sm">
             {{ formatProjectCount(projectList.items.value.length) }} /
             {{ formatStatsFreshness(projectList.stats.data.value?.as_of) }}
-            <span v-if="projectList.statsStale.value">/ stale</span>
+            <span
+              v-if="projectList.statsStale.value"
+              class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300"
+              title="Some runtime stats could not be refreshed. Cached values are shown where available."
+            >
+              /
+              <TriangleAlert class="size-3.5" aria-hidden="true" />
+              stale
+            </span>
           </p>
         </div>
       </div>

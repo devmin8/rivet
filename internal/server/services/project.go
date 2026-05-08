@@ -24,6 +24,8 @@ type ProjectService struct {
 	docker *docker.Client
 	log    *slog.Logger
 
+	// lifecycleMu serializes project lifecycle actions while the MVP state model has no starting/stopping states.
+	lifecycleMu sync.Mutex
 	// statsMu prevents concurrent dashboard requests from stampeding Docker when the stats cache expires.
 	statsMu sync.Mutex
 	// statsCache stores recent runtime stats and raw CPU samples used to calculate the next CPU percent.
@@ -115,9 +117,15 @@ func (s *ProjectService) UpdateProjectTargetImage(id string, userID string, imag
 }
 
 func (s *ProjectService) StartProject(ctx context.Context, id string, userID string) (*database.Project, error) {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+
 	project, err := s.GetProject(id, userID)
 	if err != nil {
 		return nil, err
+	}
+	if project.Status == database.StatusDeploying {
+		return nil, ErrDeployInProgress
 	}
 
 	image := strings.TrimSpace(project.TargetImageRef)
@@ -132,6 +140,7 @@ func (s *ProjectService) StartProject(ctx context.Context, id string, userID str
 		return project, nil
 	}
 
+	s.clearRuntimeStatsCache(project.ID)
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return nil, err
 	}
@@ -141,19 +150,26 @@ func (s *ProjectService) StartProject(ctx context.Context, id string, userID str
 		return nil, err
 	}
 
-	return s.markStarted(project.ID, image, containerID)
+	return s.markStarted(project.ID, userID, image, containerID)
 }
 
 func (s *ProjectService) StopProject(ctx context.Context, id string, userID string) (*database.Project, error) {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+
 	project, err := s.GetProject(id, userID)
 	if err != nil {
 		return nil, err
+	}
+	if project.Status == database.StatusDeploying {
+		return nil, ErrDeployInProgress
 	}
 
 	if project.Status == database.StatusStopped && project.DesiredStatus == database.DesiredStatusStopped && project.ContainerID == "" {
 		return project, nil
 	}
 
+	s.clearRuntimeStatsCache(project.ID)
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return nil, err
 	}
@@ -162,30 +178,49 @@ func (s *ProjectService) StopProject(ctx context.Context, id string, userID stri
 }
 
 func (s *ProjectService) DeleteProject(ctx context.Context, id string, userID string) error {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+
 	project, err := s.getProjectForOwner(id, userID, true)
 	if err != nil {
 		return err
 	}
+	if project.Status == database.StatusDeploying {
+		return ErrDeployInProgress
+	}
 
+	s.clearRuntimeStatsCache(project.ID)
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return err
 	}
 
-	return s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ?", id, userID).
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
 		Updates(map[string]any{
 			"is_active":      false,
 			"status":         database.StatusStopped,
 			"desired_status": database.DesiredStatusStopped,
 			"container_id":   "",
-		}).Error
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return s.classifyProjectGuardFailure(id, userID, true)
+	}
+
+	return nil
 }
 
 func (s *ProjectService) DeployProject(ctx context.Context, id string, userID string) (*database.Project, error) {
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+
 	project, err := s.markDeploying(id, userID)
 	if err != nil {
 		return nil, err
 	}
+	s.clearRuntimeStatsCache(project.ID)
 
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return nil, s.markDeployFailed(project.ID, project.TargetImageRef, err)
@@ -280,10 +315,10 @@ func (s *ProjectService) markDeployRunning(id string, targetImage string, contai
 	return &project, nil
 }
 
-func (s *ProjectService) markStarted(id string, image string, containerID string) (*database.Project, error) {
+func (s *ProjectService) markStarted(id string, userID string, image string, containerID string) (*database.Project, error) {
 	now := time.Now().UTC()
-	if err := s.db.Model(&database.Project{}).
-		Where("id = ?", id).
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ?", id, userID, true, database.StatusDeploying).
 		Updates(map[string]any{
 			"current_image_ref": image,
 			"status":            database.StatusRunning,
@@ -291,26 +326,30 @@ func (s *ProjectService) markStarted(id string, image string, containerID string
 			"container_id":      containerID,
 			"last_error":        "",
 			"last_active_at":    now,
-		}).Error; err != nil {
-		return nil, err
+		})
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, s.classifyProjectGuardFailure(id, userID, true)
 	}
 
-	var project database.Project
-	if err := s.db.Where("id = ?", id).First(&project).Error; err != nil {
-		return nil, err
-	}
-	return &project, nil
+	return s.GetProject(id, userID)
 }
 
 func (s *ProjectService) markStopped(id string, userID string) (*database.Project, error) {
-	if err := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ?", id, userID, true).
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ?", id, userID, true, database.StatusDeploying).
 		Updates(map[string]any{
 			"status":         database.StatusStopped,
 			"desired_status": database.DesiredStatusStopped,
 			"container_id":   "",
-		}).Error; err != nil {
-		return nil, err
+		})
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, s.classifyProjectGuardFailure(id, userID, true)
 	}
 
 	return s.GetProject(id, userID)

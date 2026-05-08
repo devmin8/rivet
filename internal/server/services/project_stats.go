@@ -87,7 +87,7 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 
 	// Stats are optional. If Docker is unavailable, return whatever cached data exists.
 	if s.docker == nil {
-		appendStaleCachedStats(&items, s.statsCache, refreshProjects)
+		appendCachedRuntimeStats(&items, s.statsCache, refreshProjects)
 		return ProjectRuntimeStatsResponse{
 			AsOf:  now,
 			Stale: true,
@@ -97,7 +97,7 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 
 	// Check Docker once before fanning out, so a down daemon does not create many failures.
 	if err := s.docker.CheckRunning(ctx); err != nil {
-		appendStaleCachedStats(&items, s.statsCache, refreshProjects)
+		appendCachedRuntimeStats(&items, s.statsCache, refreshProjects)
 		return ProjectRuntimeStatsResponse{
 			AsOf:  now,
 			Stale: true,
@@ -121,7 +121,8 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 	// Merge live results into the response and update the cache for the next poll.
 	for _, result := range s.collectRuntimeStats(ctx, refreshProjects, previousSamples) {
 		if result.err != nil {
-			stale = appendStaleCachedStat(&items, s.statsCache, result.project.ID) || stale
+			stale = true
+			appendCachedRuntimeStat(&items, s.statsCache, result.project.ID)
 			s.logRuntimeStatsFailure(result.project, result.err)
 			continue
 		}
@@ -218,24 +219,28 @@ func projectRuntimeStatsIDs(rawIDs string) []string {
 	return ids
 }
 
-// appendStaleCachedStats appends any cached rows for projects that could not be refreshed.
-func appendStaleCachedStats(items *[]ProjectRuntimeStatsItem, cache map[string]projectRuntimeStatsCacheEntry, projects []database.Project) bool {
-	stale := false
+// appendCachedRuntimeStats appends any cached rows for projects that could not be refreshed.
+func appendCachedRuntimeStats(items *[]ProjectRuntimeStatsItem, cache map[string]projectRuntimeStatsCacheEntry, projects []database.Project) {
 	for _, project := range projects {
-		stale = appendStaleCachedStat(items, cache, project.ID) || stale
+		appendCachedRuntimeStat(items, cache, project.ID)
 	}
-	return stale
 }
 
-// appendStaleCachedStat appends one cached row and reports whether a stale row was used.
-func appendStaleCachedStat(items *[]ProjectRuntimeStatsItem, cache map[string]projectRuntimeStatsCacheEntry, projectID string) bool {
+// appendCachedRuntimeStat appends one cached row if it exists.
+func appendCachedRuntimeStat(items *[]ProjectRuntimeStatsItem, cache map[string]projectRuntimeStatsCacheEntry, projectID string) {
 	cached, ok := cache[projectID]
 	if !ok {
-		return false
+		return
 	}
 
 	*items = append(*items, cached.item)
-	return true
+}
+
+func (s *ProjectService) clearRuntimeStatsCache(projectID string) {
+	s.statsMu.Lock()
+	defer s.statsMu.Unlock()
+
+	delete(s.statsCache, projectID)
 }
 
 // logRuntimeStatsFailure logs expected missing-container states quietly and real Docker failures as warnings.

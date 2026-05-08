@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { ProjectDisplayStatus, ProjectStats } from '~/features/projects/types'
 
 const props = defineProps<{
@@ -6,6 +8,18 @@ const props = defineProps<{
   status: ProjectDisplayStatus
   isLoading: boolean
 }>()
+
+const emptyStatsLabel = computed(() => {
+  if (props.status === 'deploying') {
+    return 'Stats pending'
+  }
+
+  if (props.status === 'running' || props.status === 'failed') {
+    return 'Stats unavailable'
+  }
+
+  return 'No live stats'
+})
 
 function formatCPU(value: number): string {
   if (value === 0) {
@@ -87,7 +101,7 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
     </template>
 
     <p v-else class="text-muted-foreground col-span-2 text-sm sm:col-span-3">
-      {{ props.status === 'running' ? 'Stats unavailable' : 'No live stats' }}
+      {{ emptyStatsLabel }}
     </p>
   </div>
 </template>

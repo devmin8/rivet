@@ -93,6 +93,14 @@ export function useDeleteProject() {
 }
 
 export function getProjectDisplayStatus(project: Project): ProjectDisplayStatus {
+  if (project.status === 'deploying') {
+    return 'deploying'
+  }
+
+  if (project.status === 'failed') {
+    return 'failed'
+  }
+
   if (project.desired_status === 'running' && project.status === 'running') {
     return 'running'
   }
@@ -108,7 +116,6 @@ function hasRuntimeHistory(project: Project): boolean {
   return (
     project.current_image_ref !== '' ||
     project.target_image_ref !== '' ||
-    project.container_id !== '' ||
     project.last_active_at !== null
   )
 }

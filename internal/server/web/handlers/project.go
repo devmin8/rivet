@@ -70,7 +70,7 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 
 	h.syncRoutes(c.Context(), project.ID)
 
-	return c.Status(fiber.StatusCreated).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusCreated).JSON(mapper.ToProjectResponse(project))
 }
 
 func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
@@ -97,7 +97,7 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
 }
 
 func (h *ProjectHandler) GetProjectStats(c fiber.Ctx) error {
@@ -124,7 +124,7 @@ func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
 
 	h.syncRoutes(c.Context(), project.ID)
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
 }
 
 func (h *ProjectHandler) StartProject(c fiber.Ctx) error {
@@ -137,7 +137,7 @@ func (h *ProjectHandler) StartProject(c fiber.Ctx) error {
 
 	h.syncRoutes(c.Context(), project.ID)
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
 }
 
 func (h *ProjectHandler) StopProject(c fiber.Ctx) error {
@@ -150,7 +150,7 @@ func (h *ProjectHandler) StopProject(c fiber.Ctx) error {
 
 	h.syncRoutes(c.Context(), project.ID)
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
 }
 
 func (h *ProjectHandler) DeleteProject(c fiber.Ctx) error {

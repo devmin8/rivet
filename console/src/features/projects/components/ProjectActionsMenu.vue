@@ -20,7 +20,16 @@ const emit = defineEmits<{
 const isConfirmingDelete = ref(false)
 
 const isRunning = computed(() => props.status === 'running')
-const isPrimaryPending = computed(() => props.isStarting || props.isStopping)
+const isPrimaryPending = computed(
+  () => props.isStarting || props.isStopping || props.status === 'deploying',
+)
+const primaryLabel = computed(() => {
+  if (props.status === 'deploying') {
+    return 'Deploying'
+  }
+
+  return isRunning.value ? 'Stop' : 'Start'
+})
 </script>
 
 <template>
@@ -35,7 +44,7 @@ const isPrimaryPending = computed(() => props.isStarting || props.isStopping)
       <LoaderCircle v-if="isPrimaryPending" class="size-4 animate-spin" aria-hidden="true" />
       <Square v-else-if="isRunning" class="size-4" aria-hidden="true" />
       <Play v-else class="size-4" aria-hidden="true" />
-      {{ isRunning ? 'Stop' : 'Start' }}
+      {{ primaryLabel }}
     </Button>
 
     <DropdownMenu>

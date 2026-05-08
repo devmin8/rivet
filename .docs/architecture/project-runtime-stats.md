@@ -33,13 +33,13 @@ Example:
 }
 ```
 
-`items` is sparse. A stopped project, missing container, or Docker stats failure means that project is omitted. The console treats missing stats as "not available."
+`items` is sparse. A stopped project or missing container means that project is omitted. If Docker stats for a project fail but Rivet has a cached row, the cached row may be returned with `stale: true`; otherwise the project is omitted. The console treats missing stats as "not available" and shows a small stale warning when any requested live stat could not be refreshed.
 
 ## Why A Separate Endpoint
 
 `GET /projects` should stay a fast database read. Runtime stats come from Docker, have different failure behavior, and can be slower or stale. The console should call `/projects` and `/projects/stats` in parallel and merge by `project_id`.
 
-Do not expose Docker container IDs or names. Docker does not know Rivet authorization. The service first loads projects owned by the authenticated user, then reads stats only for those project containers.
+Do not expose Docker container IDs or names in public API responses. Docker does not know Rivet authorization. The service first loads projects owned by the authenticated user, then reads stats only for those project containers.
 
 ## Data Source
 
@@ -121,7 +121,7 @@ This is enough for the MVP. A background sampler and SQLite history can come lat
 
 Stats are best-effort.
 
-- One project fails: omit that project.
+- One project fails: return its cached row if available, set `stale: true`, and otherwise omit that project.
 - Docker unavailable: return available cached stats and `stale: true`.
 - No cached stats: return an empty `items` array and `stale: true`.
 - Log failures server-side with project ID and container name.
