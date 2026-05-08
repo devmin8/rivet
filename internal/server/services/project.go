@@ -72,6 +72,17 @@ func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Proj
 	return project, nil
 }
 
+func (s *ProjectService) ListProjects(userID string, includeDeleted bool) ([]database.Project, error) {
+	query := s.db.Where("created_by_id = ?", userID)
+	if !includeDeleted {
+		query = query.Where("is_active = ?", true)
+	}
+
+	var projects []database.Project
+	err := query.Order("created_at DESC").Find(&projects).Error
+	return projects, err
+}
+
 func (s *ProjectService) GetProject(id string, userID string) (*database.Project, error) {
 	var project database.Project
 	if err := s.db.Where("id = ? AND created_by_id = ?", id, userID).First(&project).Error; err != nil {
@@ -101,6 +112,73 @@ func (s *ProjectService) UpdateProjectTargetImage(id string, userID string, imag
 	}
 
 	return s.GetProject(id, userID)
+}
+
+func (s *ProjectService) StartProject(ctx context.Context, id string, userID string) (*database.Project, error) {
+	project, err := s.GetProject(id, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	image := strings.TrimSpace(project.TargetImageRef)
+	if image == "" {
+		image = strings.TrimSpace(project.CurrentImageRef)
+	}
+	if image == "" {
+		return nil, ErrNoTargetImage
+	}
+
+	if project.Status == database.StatusRunning && project.DesiredStatus == database.DesiredStatusRunning {
+		return project, nil
+	}
+
+	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
+		return nil, err
+	}
+
+	containerID, err := s.docker.StartContainer(ctx, project.ContainerName, project.ID, image)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.markStarted(project.ID, image, containerID)
+}
+
+func (s *ProjectService) StopProject(ctx context.Context, id string, userID string) (*database.Project, error) {
+	project, err := s.GetProject(id, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if project.Status == database.StatusStopped && project.DesiredStatus == database.DesiredStatusStopped && project.ContainerID == "" {
+		return project, nil
+	}
+
+	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
+		return nil, err
+	}
+
+	return s.markStopped(project.ID, userID)
+}
+
+func (s *ProjectService) DeleteProject(ctx context.Context, id string, userID string) error {
+	project, err := s.getProjectForOwner(id, userID, true)
+	if err != nil {
+		return err
+	}
+
+	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
+		return err
+	}
+
+	return s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ?", id, userID).
+		Updates(map[string]any{
+			"is_active":      false,
+			"status":         database.StatusStopped,
+			"desired_status": database.DesiredStatusStopped,
+			"container_id":   "",
+		}).Error
 }
 
 func (s *ProjectService) DeployProject(ctx context.Context, id string, userID string) (*database.Project, error) {
@@ -202,6 +280,42 @@ func (s *ProjectService) markDeployRunning(id string, targetImage string, contai
 	return &project, nil
 }
 
+func (s *ProjectService) markStarted(id string, image string, containerID string) (*database.Project, error) {
+	now := time.Now().UTC()
+	if err := s.db.Model(&database.Project{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"current_image_ref": image,
+			"status":            database.StatusRunning,
+			"desired_status":    database.DesiredStatusRunning,
+			"container_id":      containerID,
+			"last_error":        "",
+			"last_active_at":    now,
+		}).Error; err != nil {
+		return nil, err
+	}
+
+	var project database.Project
+	if err := s.db.Where("id = ?", id).First(&project).Error; err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+func (s *ProjectService) markStopped(id string, userID string) (*database.Project, error) {
+	if err := s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ? AND is_active = ?", id, userID, true).
+		Updates(map[string]any{
+			"status":         database.StatusStopped,
+			"desired_status": database.DesiredStatusStopped,
+			"container_id":   "",
+		}).Error; err != nil {
+		return nil, err
+	}
+
+	return s.GetProject(id, userID)
+}
+
 func (s *ProjectService) markDeployFailed(id string, targetImage string, deployErr error) error {
 	if err := s.db.Model(&database.Project{}).
 		Where("id = ? AND target_image_ref = ?", id, targetImage).
@@ -217,15 +331,9 @@ func (s *ProjectService) markDeployFailed(id string, targetImage string, deployE
 }
 
 func (s *ProjectService) classifyProjectGuardFailure(id string, userID string, allowNoTarget bool) error {
-	var project database.Project
-	if err := s.db.Where("id = ? AND created_by_id = ?", id, userID).First(&project).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrProjectNotFound
-		}
+	project, err := s.getProjectForOwner(id, userID, false)
+	if err != nil {
 		return err
-	}
-	if !project.IsActive {
-		return ErrProjectInactive
 	}
 	if project.Status == database.StatusDeploying {
 		return ErrDeployInProgress
@@ -235,6 +343,21 @@ func (s *ProjectService) classifyProjectGuardFailure(id string, userID string, a
 	}
 
 	return ErrProjectNotFound
+}
+
+func (s *ProjectService) getProjectForOwner(id string, userID string, includeInactive bool) (*database.Project, error) {
+	var project database.Project
+	if err := s.db.Where("id = ? AND created_by_id = ?", id, userID).First(&project).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, err
+	}
+	if !includeInactive && !project.IsActive {
+		return nil, ErrProjectInactive
+	}
+
+	return &project, nil
 }
 
 func normalizePlatform(platform string) database.Platform {

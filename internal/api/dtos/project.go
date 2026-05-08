@@ -32,6 +32,10 @@ type CreateProjectResponse struct {
 	UpdatedByID     string     `json:"updated_by_id"`
 }
 
+type ListProjectsResponse struct {
+	Items []CreateProjectResponse `json:"items"`
+}
+
 // ProjectRuntimeStatsResponse is the public response for recent per-project runtime stats.
 type ProjectRuntimeStatsResponse struct {
 	// AsOf is when the backend assembled this stats response.
