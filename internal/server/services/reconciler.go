@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -47,7 +46,7 @@ func (r *Reconciler) run(ctx context.Context) {
 }
 
 func (r *Reconciler) reconcile(ctx context.Context) {
-	projects, err := r.projects.ActiveDesiredRunningProjects()
+	projects, err := r.projects.ActiveRuntimeProjects()
 	if err != nil {
 		r.log.Error("failed to list projects for reconciliation", "err", err)
 		return
@@ -61,54 +60,41 @@ func (r *Reconciler) reconcile(ctx context.Context) {
 }
 
 func (r *Reconciler) reconcileProject(ctx context.Context, project database.Project) error {
-	if project.TargetImageRef == "" {
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, "", ErrNoTargetImage)
+	expectedImage := expectedRuntimeImage(project)
+	if expectedImage == "" {
+		return r.projects.MarkReconcileFailed(project.ID, "", ErrNoTargetImage)
 	}
 
 	info, err := r.docker.InspectContainer(ctx, project.ContainerName)
 	if errors.Is(err, docker.ErrContainerNotFound) {
-		return r.startTargetOrRollback(ctx, project)
+		return r.projects.MarkReconcileFailed(project.ID, "", docker.ErrContainerNotFound)
 	}
 	if err != nil {
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, "", err)
+		return r.projects.MarkReconcileFailed(project.ID, "", err)
 	}
 
-	if info.Running && info.Image == project.TargetImageRef {
-		return r.projects.MarkReconciledRunning(project.ID, project.TargetImageRef, info.ID)
+	if info.Running && info.Image == expectedImage {
+		return r.projects.MarkReconciledRunning(project.ID, expectedImage, info.ID)
 	}
 
-	if info.Running && project.Status == database.StatusFailed && info.Image == project.CurrentImageRef {
-		// A rollback is serving the last good image while the failed target stays desired.
-		return nil
+	if !info.Running {
+		return r.projects.MarkReconcileFailed(project.ID, info.ID, docker.ErrContainerNotRunning)
 	}
 
-	if err := r.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, info.ID, err)
-	}
-
-	return r.startTargetOrRollback(ctx, project)
+	// todo: at this point some image is running but the target image.
+	// we need to handle this case, else user wont know easily which image is un necessary.
+	err = errors.New("container image does not match project runtime state")
+	return r.projects.MarkReconcileFailed(project.ID, info.ID, err)
 }
 
-func (r *Reconciler) startTargetOrRollback(ctx context.Context, project database.Project) error {
-	containerID, err := r.docker.StartContainer(ctx, project.ContainerName, project.ID, project.TargetImageRef)
-	if err == nil {
-		return r.projects.MarkReconciledRunning(project.ID, project.TargetImageRef, containerID)
+func expectedRuntimeImage(project database.Project) string {
+	switch project.Status {
+	case database.StatusDeploying:
+		return project.TargetImageRef
+	default:
+		if project.CurrentImageRef != "" {
+			return project.CurrentImageRef
+		}
+		return project.TargetImageRef
 	}
-
-	targetErr := fmt.Errorf("start target image %s: %w", project.TargetImageRef, err)
-	if project.CurrentImageRef == "" {
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, "", targetErr)
-	}
-
-	if err := r.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
-		// A failed start can leave a named container behind, which blocks rollback.
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, "", errors.Join(targetErr, err))
-	}
-
-	rollbackID, rollbackErr := r.docker.StartContainer(ctx, project.ContainerName, project.ID, project.CurrentImageRef)
-	if rollbackErr != nil {
-		return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, "", errors.Join(targetErr, rollbackErr))
-	}
-
-	return r.projects.MarkReconcileFailed(project.ID, project.TargetImageRef, rollbackID, targetErr)
 }

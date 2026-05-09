@@ -18,7 +18,6 @@ type ProjectResponse struct {
 	Port            string     `json:"port"`
 	Platform        string     `json:"platform"`
 	Status          string     `json:"status"`
-	DesiredStatus   string     `json:"desired_status"`
 	CurrentImageRef string     `json:"current_image_ref"`
 	TargetImageRef  string     `json:"target_image_ref"`
 	LastError       string     `json:"last_error"`
@@ -38,8 +37,6 @@ type ListProjectsResponse struct {
 type ProjectRuntimeStatsResponse struct {
 	// AsOf is when the backend assembled this stats response.
 	AsOf time.Time `json:"as_of"`
-	// Stale means at least one requested live stat could not be refreshed and cached data may be present.
-	Stale bool `json:"stale"`
 	// Items contains stats for projects that currently have available runtime data.
 	Items []ProjectRuntimeStatsItem `json:"items"`
 }
@@ -48,6 +45,10 @@ type ProjectRuntimeStatsResponse struct {
 type ProjectRuntimeStatsItem struct {
 	// ProjectID is the Rivet project ID these stats belong to.
 	ProjectID string `json:"project_id"`
+	// CapturedAt is when this row was collected from Docker.
+	CapturedAt time.Time `json:"captured_at"`
+	// Stale means this row came from cache because a fresh Docker read failed.
+	Stale bool `json:"stale"`
 	// CPUPercent is recent container CPU usage as a percentage of host CPU capacity.
 	CPUPercent float64 `json:"cpu_percent"`
 	// CPUSampleWindowSeconds is the time window used to calculate CPUPercent.

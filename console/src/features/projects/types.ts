@@ -1,6 +1,12 @@
-export type ProjectStatus = 'running' | 'stopped' | 'deploying' | 'failed'
-export type ProjectDesiredStatus = 'running' | 'stopped'
-export type ProjectDisplayStatus = 'running' | 'deploying' | 'failed' | 'paused' | 'stopped'
+export type ProjectStatus =
+  | 'starting'
+  | 'running'
+  | 'stopped'
+  | 'deploying'
+  | 'sleeping'
+  | 'waking'
+  | 'failed'
+export type ProjectDisplayStatus = ProjectStatus
 export type ProjectAction = 'start' | 'stop' | 'delete'
 
 export interface Project {
@@ -11,7 +17,6 @@ export interface Project {
   port: string
   platform: string
   status: ProjectStatus
-  desired_status: ProjectDesiredStatus
   current_image_ref: string
   target_image_ref: string
   last_error: string
@@ -29,12 +34,13 @@ export interface ProjectListResponse {
 
 export interface ProjectStatsResponse {
   as_of: string
-  stale: boolean
   items: ProjectStats[]
 }
 
 export interface ProjectStats {
   project_id: string
+  captured_at: string
+  stale: boolean
   cpu_percent: number
   cpu_sample_window_seconds: number
   memory_usage_bytes: number

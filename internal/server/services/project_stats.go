@@ -15,12 +15,13 @@ const projectRuntimeStatsTTL = 5 * time.Second
 
 type ProjectRuntimeStatsResponse struct {
 	AsOf  time.Time
-	Stale bool
 	Items []ProjectRuntimeStatsItem
 }
 
 type ProjectRuntimeStatsItem struct {
 	ProjectID              string
+	CapturedAt             time.Time
+	Stale                  bool
 	CPUPercent             float64
 	CPUSampleWindowSeconds float64
 	MemoryUsageBytes       uint64
@@ -90,7 +91,6 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 		appendCachedRuntimeStats(&items, s.statsCache, refreshProjects)
 		return ProjectRuntimeStatsResponse{
 			AsOf:  now,
-			Stale: true,
 			Items: items,
 		}, nil
 	}
@@ -100,12 +100,10 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 		appendCachedRuntimeStats(&items, s.statsCache, refreshProjects)
 		return ProjectRuntimeStatsResponse{
 			AsOf:  now,
-			Stale: true,
 			Items: items,
 		}, nil
 	}
 
-	stale := false
 	previousSamples := make(map[string]*docker.ContainerStatsSample, len(refreshProjects))
 	// Build the previous-sample map used to calculate CPU without blocking Docker.
 	for _, project := range refreshProjects {
@@ -121,14 +119,15 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 	// Merge live results into the response and update the cache for the next poll.
 	for _, result := range s.collectRuntimeStats(ctx, refreshProjects, previousSamples) {
 		if result.err != nil {
-			stale = true
 			appendCachedRuntimeStat(&items, s.statsCache, result.project.ID)
+			s.markRuntimeStatsFailure(result.project, result.err)
 			s.logRuntimeStatsFailure(result.project, result.err)
 			continue
 		}
 
 		item := ProjectRuntimeStatsItem{
 			ProjectID:              result.project.ID,
+			CapturedAt:             now,
 			CPUPercent:             result.stats.CPUPercent,
 			CPUSampleWindowSeconds: result.stats.CPUSampleWindowSeconds,
 			MemoryUsageBytes:       result.stats.MemoryUsageBytes,
@@ -148,7 +147,6 @@ func (s *ProjectService) ProjectRuntimeStats(ctx context.Context, userID string,
 
 	return ProjectRuntimeStatsResponse{
 		AsOf:  now,
-		Stale: stale,
 		Items: items,
 	}, nil
 }
@@ -181,10 +179,10 @@ func (s *ProjectService) collectRuntimeStats(ctx context.Context, projects []dat
 func (s *ProjectService) runtimeStatsProjects(userID string, rawIDs string) ([]database.Project, error) {
 	var projects []database.Project
 	query := s.db.Where(
-		"created_by_id = ? AND is_active = ? AND desired_status = ?",
+		"created_by_id = ? AND is_active = ? AND status = ?",
 		userID,
 		true,
-		database.DesiredStatusRunning,
+		database.StatusRunning,
 	)
 
 	ids := projectRuntimeStatsIDs(rawIDs)
@@ -233,7 +231,9 @@ func appendCachedRuntimeStat(items *[]ProjectRuntimeStatsItem, cache map[string]
 		return
 	}
 
-	*items = append(*items, cached.item)
+	item := cached.item
+	item.Stale = true
+	*items = append(*items, item)
 }
 
 func (s *ProjectService) clearRuntimeStatsCache(projectID string) {
@@ -241,6 +241,17 @@ func (s *ProjectService) clearRuntimeStatsCache(projectID string) {
 	defer s.statsMu.Unlock()
 
 	delete(s.statsCache, projectID)
+}
+
+func (s *ProjectService) markRuntimeStatsFailure(project database.Project, err error) {
+	if project.Status != database.StatusRunning {
+		return
+	}
+	if !errors.Is(err, docker.ErrContainerNotFound) && !errors.Is(err, docker.ErrContainerNotRunning) {
+		return
+	}
+
+	_ = s.markRuntimeFailed(project.ID, project.ContainerID, err)
 }
 
 // logRuntimeStatsFailure logs expected missing-container states quietly and real Docker failures as warnings.

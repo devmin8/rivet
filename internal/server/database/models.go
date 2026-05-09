@@ -57,17 +57,13 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 type Status string
 
 const (
+	StatusStarting  Status = "starting"
 	StatusStopped   Status = "stopped"
 	StatusDeploying Status = "deploying"
 	StatusRunning   Status = "running"
+	StatusSleeping  Status = "sleeping"
+	StatusWaking    Status = "waking"
 	StatusFailed    Status = "failed"
-)
-
-type DesiredStatus string
-
-const (
-	DesiredStatusRunning DesiredStatus = "running"
-	DesiredStatusStopped DesiredStatus = "stopped"
 )
 
 type Platform string
@@ -94,9 +90,8 @@ type Project struct {
 	CurrentImageRef string `gorm:"type:text"` // last known good image
 	TargetImageRef  string `gorm:"type:text"` // image we want running
 
-	Status        Status        `gorm:"type:text;not null;default:stopped"`
-	DesiredStatus DesiredStatus `gorm:"type:text;not null;default:stopped"`
-	LastError     string        `gorm:"type:text"`
+	Status    Status `gorm:"type:text;not null;default:stopped"`
+	LastError string `gorm:"type:text"`
 
 	IsActive     bool       `gorm:"not null;default:true"`
 	LastActiveAt *time.Time `gorm:"index"`
@@ -122,11 +117,13 @@ func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (s Status) Valid() bool {
-	return s == StatusRunning || s == StatusStopped || s == StatusDeploying || s == StatusFailed
-}
-
-func (s DesiredStatus) Valid() bool {
-	return s == DesiredStatusRunning || s == DesiredStatusStopped
+	return s == StatusStarting ||
+		s == StatusRunning ||
+		s == StatusStopped ||
+		s == StatusDeploying ||
+		s == StatusSleeping ||
+		s == StatusWaking ||
+		s == StatusFailed
 }
 
 func (p Platform) Valid() bool {

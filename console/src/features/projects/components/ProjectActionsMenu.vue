@@ -2,13 +2,12 @@
 import { LoaderCircle, MoreHorizontal, Play, Square, Trash2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
-import type { ProjectDisplayStatus } from '~/features/projects/types'
+import type { ProjectAction, ProjectDisplayStatus } from '~/features/projects/types'
 
 const props = defineProps<{
   status: ProjectDisplayStatus
-  isStarting: boolean
-  isStopping: boolean
-  isDeleting: boolean
+  // User-triggered action currently in flight; runtime state still comes from status.
+  pendingAction: ProjectAction | null
 }>()
 
 const emit = defineEmits<{
@@ -19,17 +18,37 @@ const emit = defineEmits<{
 
 const isConfirmingDelete = ref(false)
 
+const activeStatusLabels: Partial<Record<ProjectDisplayStatus, string>> = {
+  deploying: 'Deploying',
+  starting: 'Starting',
+  waking: 'Waking',
+}
+
 const isRunning = computed(() => props.status === 'running')
-const isPrimaryPending = computed(
-  () => props.isStarting || props.isStopping || props.status === 'deploying',
+
+const activeStatusLabel = computed(() => activeStatusLabels[props.status] ?? '')
+
+const disableActions = computed(
+  () => props.pendingAction !== null || activeStatusLabel.value !== '',
 )
-const primaryLabel = computed(() => {
-  if (props.status === 'deploying') {
-    return 'Deploying'
+
+const isDeleteActionPending = computed(() => props.pendingAction === 'delete')
+
+function actionLabel() {
+  if (activeStatusLabel.value) {
+    return activeStatusLabel.value
   }
 
   return isRunning.value ? 'Stop' : 'Start'
-})
+}
+
+function isActionPending() {
+  return (
+    props.pendingAction === 'start' ||
+    props.pendingAction === 'stop' ||
+    activeStatusLabel.value !== ''
+  )
+}
 </script>
 
 <template>
@@ -38,13 +57,13 @@ const primaryLabel = computed(() => {
       type="button"
       size="sm"
       :variant="isRunning ? 'outline' : 'default'"
-      :disabled="isPrimaryPending || isDeleting"
+      :disabled="disableActions"
       @click="isRunning ? emit('stop') : emit('start')"
     >
-      <LoaderCircle v-if="isPrimaryPending" class="size-4 animate-spin" aria-hidden="true" />
+      <LoaderCircle v-if="isActionPending()" class="size-4 animate-spin" aria-hidden="true" />
       <Square v-else-if="isRunning" class="size-4" aria-hidden="true" />
       <Play v-else class="size-4" aria-hidden="true" />
-      {{ primaryLabel }}
+      {{ actionLabel() }}
     </Button>
 
     <DropdownMenu>
@@ -56,7 +75,7 @@ const primaryLabel = computed(() => {
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           variant="destructive"
-          :disabled="isPrimaryPending || isDeleting"
+          :disabled="disableActions"
           @click="isConfirmingDelete = true"
         >
           <Trash2 class="size-4" aria-hidden="true" />
@@ -66,6 +85,7 @@ const primaryLabel = computed(() => {
     </DropdownMenu>
   </div>
 
+  <!-- Delete project confirmation modal -->
   <div
     v-if="isConfirmingDelete"
     class="fixed inset-0 z-60 flex items-center justify-center bg-black/45 p-4"
@@ -83,13 +103,22 @@ const primaryLabel = computed(() => {
         <Button
           type="button"
           variant="outline"
-          :disabled="isDeleting"
+          :disabled="isDeleteActionPending"
           @click="isConfirmingDelete = false"
         >
           Cancel
         </Button>
-        <Button type="button" variant="destructive" :disabled="isDeleting" @click="emit('delete')">
-          <LoaderCircle v-if="isDeleting" class="size-4 animate-spin" aria-hidden="true" />
+        <Button
+          type="button"
+          variant="destructive"
+          :disabled="isDeleteActionPending"
+          @click="emit('delete')"
+        >
+          <LoaderCircle
+            v-if="isDeleteActionPending"
+            class="size-4 animate-spin"
+            aria-hidden="true"
+          />
           Delete
         </Button>
       </div>

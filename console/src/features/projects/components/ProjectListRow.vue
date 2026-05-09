@@ -102,9 +102,7 @@ const displayImage = computed(() => {
     <div class="lg:justify-self-end">
       <ProjectActionsMenu
         :status="item.status"
-        :is-starting="pendingAction === 'start'"
-        :is-stopping="pendingAction === 'stop'"
-        :is-deleting="pendingAction === 'delete'"
+        :pending-action="pendingAction"
         @start="emit('start', item.project.id)"
         @stop="emit('stop', item.project.id)"
         @delete="emit('delete', item.project.id)"

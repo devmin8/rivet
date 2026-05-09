@@ -15,7 +15,6 @@ func ToProjectResponse(project *database.Project) dtos.ProjectResponse {
 		Port:            project.Port,
 		Platform:        string(project.Platform),
 		Status:          string(project.Status),
-		DesiredStatus:   string(project.DesiredStatus),
 		CurrentImageRef: project.CurrentImageRef,
 		TargetImageRef:  project.TargetImageRef,
 		LastError:       project.LastError,
@@ -42,6 +41,8 @@ func ToProjectRuntimeStatsResponse(stats services.ProjectRuntimeStatsResponse) d
 	for _, item := range stats.Items {
 		items = append(items, dtos.ProjectRuntimeStatsItem{
 			ProjectID:              item.ProjectID,
+			CapturedAt:             item.CapturedAt,
+			Stale:                  item.Stale,
 			CPUPercent:             item.CPUPercent,
 			CPUSampleWindowSeconds: item.CPUSampleWindowSeconds,
 			MemoryUsageBytes:       item.MemoryUsageBytes,
@@ -55,7 +56,6 @@ func ToProjectRuntimeStatsResponse(stats services.ProjectRuntimeStatsResponse) d
 
 	return dtos.ProjectRuntimeStatsResponse{
 		AsOf:  stats.AsOf,
-		Stale: stats.Stale,
 		Items: items,
 	}
 }

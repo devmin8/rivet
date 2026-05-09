@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TriangleAlert } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { ProjectDisplayStatus, ProjectStats } from '~/features/projects/types'
@@ -14,11 +15,28 @@ const emptyStatsLabel = computed(() => {
     return 'Stats pending'
   }
 
+  if (props.status === 'starting' || props.status === 'waking') {
+    return 'Stats pending'
+  }
+
   if (props.status === 'running' || props.status === 'failed') {
     return 'Stats unavailable'
   }
 
   return 'No live stats'
+})
+
+const statsTitle = computed(() => {
+  if (!props.stats) {
+    return undefined
+  }
+
+  const capturedAt = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  }).format(new Date(props.stats.captured_at))
+
+  return props.stats.stale ? `Stale stats captured at ${capturedAt}` : `Captured at ${capturedAt}`
 })
 
 function formatCPU(value: number): string {
@@ -68,10 +86,18 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
 <template>
   <div
     class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-[4rem_minmax(7.5rem,8rem)_minmax(6.5rem,1fr)] lg:gap-4"
+    :title="statsTitle"
   >
     <template v-if="stats">
       <div class="min-w-0">
-        <p class="text-muted-foreground text-xs">CPU</p>
+        <p class="text-muted-foreground inline-flex items-center gap-1 text-xs">
+          CPU
+          <TriangleAlert
+            v-if="stats.stale"
+            class="size-3.5 text-amber-600 dark:text-amber-300"
+            aria-label="Stale stats"
+          />
+        </p>
         <p class="font-medium">{{ formatCPU(stats.cpu_percent) }}</p>
       </div>
 

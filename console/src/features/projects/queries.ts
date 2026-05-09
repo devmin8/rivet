@@ -15,7 +15,11 @@ export function useProjects() {
   return useQuery({
     queryKey: projectKeys.activeProjects,
     queryFn: listProjects,
-    staleTime: 30_000,
+    staleTime: 3_000,
+    // Project status is reconciler-owned operational data, so keep it fresh while the dashboard is open.
+    // Later we can replace polling with stats-driven invalidation or push updates over SSE/WebSocket.
+    refetchInterval: 3_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -23,8 +27,8 @@ export function useProjectStats() {
   return useQuery({
     queryKey: projectKeys.runtimeStats,
     queryFn: getProjectStats,
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 3_000,
+    refetchInterval: 3_000,
     refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
     retry: 1,
@@ -61,7 +65,7 @@ export function useProjectListData() {
     isLoadingStats: stats.isLoading,
     isError: projects.isError,
     error: projects.error,
-    statsStale: computed(() => stats.data.value?.stale ?? false),
+    statsStale: computed(() => stats.data.value?.items.some((item) => item.stale) ?? false),
   }
 }
 
@@ -93,31 +97,7 @@ export function useDeleteProject() {
 }
 
 export function getProjectDisplayStatus(project: Project): ProjectDisplayStatus {
-  if (project.status === 'deploying') {
-    return 'deploying'
-  }
-
-  if (project.status === 'failed') {
-    return 'failed'
-  }
-
-  if (project.desired_status === 'running' && project.status === 'running') {
-    return 'running'
-  }
-
-  if (project.desired_status === 'stopped' && hasRuntimeHistory(project)) {
-    return 'paused'
-  }
-
-  return 'stopped'
-}
-
-function hasRuntimeHistory(project: Project): boolean {
-  return (
-    project.current_image_ref !== '' ||
-    project.target_image_ref !== '' ||
-    project.last_active_at !== null
-  )
+  return project.status
 }
 
 function invalidateProjectList(queryClient: ReturnType<typeof useQueryClient>) {
