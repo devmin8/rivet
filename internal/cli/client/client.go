@@ -91,8 +91,8 @@ func (c *Client) SignIn(ctx context.Context, username string, password string) (
 	}, nil
 }
 
-func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.CreateProjectRequest) (*dtos.CreateProjectResponse, error) {
-	var res dtos.CreateProjectResponse
+func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.CreateProjectRequest) (*dtos.ProjectResponse, error) {
+	var res dtos.ProjectResponse
 	err := c.post(ctx, "/api/v1/projects", session, req, http.StatusCreated, &res)
 	if err != nil {
 		return nil, err
@@ -101,8 +101,8 @@ func (c *Client) CreateProject(ctx context.Context, session *Session, req dtos.C
 	return &res, nil
 }
 
-func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*dtos.CreateProjectResponse, error) {
-	var res dtos.CreateProjectResponse
+func (c *Client) GetProject(ctx context.Context, session *Session, id string) (*dtos.ProjectResponse, error) {
+	var res dtos.ProjectResponse
 	err := c.get(ctx, "/api/v1/projects/"+url.PathEscape(id), session, http.StatusOK, &res)
 	if err != nil {
 		return nil, err
@@ -152,8 +152,8 @@ func (c *Client) UploadImage(ctx context.Context, session *Session, projectID st
 	return nil
 }
 
-func (c *Client) DeployProject(ctx context.Context, session *Session, projectID string) (*dtos.CreateProjectResponse, error) {
-	var res dtos.CreateProjectResponse
+func (c *Client) DeployProject(ctx context.Context, session *Session, projectID string) (*dtos.ProjectResponse, error) {
+	var res dtos.ProjectResponse
 	err := c.post(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/deploy", session, struct{}{}, http.StatusOK, &res)
 	if err != nil {
 		return nil, err

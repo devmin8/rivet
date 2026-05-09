@@ -6,8 +6,8 @@ import (
 	"github.com/devmin8/rivet/internal/server/services"
 )
 
-func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectResponse {
-	return dtos.CreateProjectResponse{
+func ToProjectResponse(project *database.Project) dtos.ProjectResponse {
+	return dtos.ProjectResponse{
 		ID:              project.ID,
 		Name:            project.Name,
 		Domain:          project.Domain,
@@ -18,8 +18,6 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 		DesiredStatus:   string(project.DesiredStatus),
 		CurrentImageRef: project.CurrentImageRef,
 		TargetImageRef:  project.TargetImageRef,
-		ContainerName:   project.ContainerName,
-		ContainerID:     project.ContainerID,
 		LastError:       project.LastError,
 		IsActive:        project.IsActive,
 		LastActiveAt:    project.LastActiveAt,
@@ -31,9 +29,9 @@ func ToCreateProjectResponse(project *database.Project) dtos.CreateProjectRespon
 }
 
 func ToListProjectsResponse(projects []database.Project) dtos.ListProjectsResponse {
-	items := make([]dtos.CreateProjectResponse, 0, len(projects))
+	items := make([]dtos.ProjectResponse, 0, len(projects))
 	for i := range projects {
-		items = append(items, ToCreateProjectResponse(&projects[i]))
+		items = append(items, ToProjectResponse(&projects[i]))
 	}
 
 	return dtos.ListProjectsResponse{Items: items}

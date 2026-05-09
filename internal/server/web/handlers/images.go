@@ -81,7 +81,7 @@ func (h *ImageHandler) UploadImage(c fiber.Ctx) error {
 		return projectError(c, err, "Unable to update project image.")
 	}
 
-	return c.Status(fiber.StatusOK).JSON(mapper.ToCreateProjectResponse(project))
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
 }
 
 func projectError(c fiber.Ctx, err error, message string) error {
@@ -106,7 +106,7 @@ func projectError(c fiber.Ctx, err error, message string) error {
 	if errors.Is(err, services.ErrNoTargetImage) {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "no_target_image",
-			Message: "Upload an image before deploying.",
+			Message: "Upload an image before starting or deploying.",
 		})
 	}
 	if errors.Is(err, io.ErrUnexpectedEOF) {

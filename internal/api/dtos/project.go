@@ -10,7 +10,7 @@ type CreateProjectRequest struct {
 	Platform    string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
 }
 
-type CreateProjectResponse struct {
+type ProjectResponse struct {
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
 	Domain          string     `json:"domain"`
@@ -21,8 +21,6 @@ type CreateProjectResponse struct {
 	DesiredStatus   string     `json:"desired_status"`
 	CurrentImageRef string     `json:"current_image_ref"`
 	TargetImageRef  string     `json:"target_image_ref"`
-	ContainerName   string     `json:"container_name"`
-	ContainerID     string     `json:"container_id"`
 	LastError       string     `json:"last_error"`
 	IsActive        bool       `json:"is_active"`
 	LastActiveAt    *time.Time `json:"last_active_at"`
@@ -33,7 +31,7 @@ type CreateProjectResponse struct {
 }
 
 type ListProjectsResponse struct {
-	Items []CreateProjectResponse `json:"items"`
+	Items []ProjectResponse `json:"items"`
 }
 
 // ProjectRuntimeStatsResponse is the public response for recent per-project runtime stats.

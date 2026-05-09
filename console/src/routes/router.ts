@@ -1,19 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { getCurrentUser } from '~/features/auth/api'
-import SignInPage from '~/features/auth/pages/SignInPage.vue'
-import HomePage from '~/features/home/pages/HomePage.vue'
 import { ApiError } from '~/lib/errors'
 import { queryClient } from '~/lib/query-client'
 import { authKeys } from '~/lib/query-keys'
+import Dashboard from '~/routes/dashboard.vue'
+import SignIn from '~/routes/sign-in.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomePage,
+      name: 'dashboard',
+      component: Dashboard,
       meta: {
         requiresAuth: true,
       },
@@ -21,7 +21,7 @@ const router = createRouter({
     {
       path: '/signin',
       name: 'signin',
-      component: SignInPage,
+      component: SignIn,
       meta: {
         guestOnly: true,
       },
