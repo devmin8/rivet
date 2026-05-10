@@ -114,6 +114,27 @@ func (h *ProjectHandler) GetProjectStats(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectRuntimeStatsResponse(stats))
 }
 
+func (h *ProjectHandler) UpdateProjectRuntimeSettings(c fiber.Ctx) error {
+	req := new(dtos.UpdateProjectRuntimeSettingsRequest)
+	if err := c.Bind().Body(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Auto sleep duration must be disabled or at least 60000 ms.",
+		})
+	}
+
+	userID, _ := requestctx.RequireUserID(c)
+
+	project, err := h.projectService.UpdateProjectRuntimeSettings(c.Params("id"), userID, services.UpdateProjectRuntimeSettingsRequest{
+		AutoSleepAfterMS: req.AutoSleepAfterMS,
+	})
+	if err != nil {
+		return projectError(c, err, "Unable to update project runtime settings.")
+	}
+
+	return c.Status(fiber.StatusOK).JSON(mapper.ToProjectResponse(project))
+}
+
 func (h *ProjectHandler) DeployProject(c fiber.Ctx) error {
 	userID, _ := requestctx.RequireUserID(c)
 

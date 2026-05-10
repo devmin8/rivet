@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreHorizontal, Play, Square, Trash2 } from 'lucide-vue-next'
+import { LoaderCircle, MoreHorizontal, Play, Square, Trash2, TimerReset } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import type { ProjectAction, ProjectDisplayStatus } from '~/features/projects/types'
 
 const props = defineProps<{
   status: ProjectDisplayStatus
+  autoSleepAfterMs: number | null
   // User-triggered action currently in flight; runtime state still comes from status.
   pendingAction: ProjectAction | null
 }>()
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   start: []
   stop: []
   delete: []
+  updateAutoSleep: [autoSleepAfterMS: number | null]
 }>()
 
 const isConfirmingDelete = ref(false)
@@ -25,6 +27,7 @@ const activeStatusLabels: Partial<Record<ProjectDisplayStatus, string>> = {
 }
 
 const isRunning = computed(() => props.status === 'running')
+const autoSleepEnabled = computed(() => props.autoSleepAfterMs !== null)
 
 const activeStatusLabel = computed(() => activeStatusLabels[props.status] ?? '')
 
@@ -33,6 +36,7 @@ const disableActions = computed(
 )
 
 const isDeleteActionPending = computed(() => props.pendingAction === 'delete')
+const isRuntimeSettingsPending = computed(() => props.pendingAction === 'runtime-settings')
 
 function actionLabel() {
   if (activeStatusLabel.value) {
@@ -73,6 +77,18 @@ function isActionPending() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          :disabled="disableActions"
+          @click="emit('updateAutoSleep', autoSleepEnabled ? null : 60_000)"
+        >
+          <LoaderCircle
+            v-if="isRuntimeSettingsPending"
+            class="size-4 animate-spin"
+            aria-hidden="true"
+          />
+          <TimerReset v-else class="size-4" aria-hidden="true" />
+          {{ autoSleepEnabled ? 'Disable auto sleep' : 'Enable auto sleep' }}
+        </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
           :disabled="disableActions"

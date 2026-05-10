@@ -109,6 +109,12 @@ func projectError(c fiber.Ctx, err error, message string) error {
 			Message: "Upload an image before starting or deploying.",
 		})
 	}
+	if errors.Is(err, services.ErrInvalidAutoSleepAfter) {
+		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+			Error:   "invalid_auto_sleep_after",
+			Message: "Auto sleep duration must be disabled or at least 60000 ms.",
+		})
+	}
 	if errors.Is(err, io.ErrUnexpectedEOF) {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_request",

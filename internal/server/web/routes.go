@@ -37,6 +37,7 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Get("/projects", projectHandler.ListProjects)
 	v1.Post("/projects", projectHandler.CreateProject)
 	v1.Get("/projects/:id", projectHandler.GetProject)
+	v1.Patch("/projects/:id/runtime-settings", projectHandler.UpdateProjectRuntimeSettings)
 	v1.Post("/projects/:id/start", projectHandler.StartProject)
 	v1.Post("/projects/:id/stop", projectHandler.StopProject)
 	v1.Delete("/projects/:id", projectHandler.DeleteProject)

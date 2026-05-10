@@ -18,6 +18,10 @@ var ErrProjectNotFound = errors.New("project not found")
 var ErrProjectInactive = errors.New("project is not active")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
 var ErrNoTargetImage = errors.New("project has no target image")
+var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be at least 60000 ms")
+
+const defaultAutoSleepAfterMS int64 = 60_000 // 1 minute
+const minAutoSleepAfterMS int64 = 60_000 // 1 minute
 
 type ProjectService struct {
 	db     *gorm.DB
@@ -41,6 +45,10 @@ type CreateProjectRequest struct {
 	CreatedByID string
 }
 
+type UpdateProjectRuntimeSettingsRequest struct {
+	AutoSleepAfterMS *int64
+}
+
 func NewProjectService(db *gorm.DB, docker *docker.Client) *ProjectService {
 	return NewProjectServiceWithLogger(db, docker, nil)
 }
@@ -55,15 +63,18 @@ func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, log *slog.L
 }
 
 func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Project, error) {
+	// todo: get it from the cli, so cli needs to be updated
+	autoSleepAfterMS := defaultAutoSleepAfterMS
 	project := &database.Project{
-		Name:        strings.TrimSpace(req.Name),
-		Domain:      strings.TrimSpace(req.Domain),
-		Description: strings.TrimSpace(req.Description),
-		Port:        strconv.FormatUint(uint64(req.Port), 10),
-		Platform:    normalizePlatform(req.Platform),
-		Status:      database.StatusStopped,
-		CreatedByID: req.CreatedByID,
-		UpdatedByID: req.CreatedByID,
+		Name:             strings.TrimSpace(req.Name),
+		Domain:           strings.TrimSpace(req.Domain),
+		Description:      strings.TrimSpace(req.Description),
+		Port:             strconv.FormatUint(uint64(req.Port), 10),
+		Platform:         normalizePlatform(req.Platform),
+		Status:           database.StatusStopped,
+		AutoSleepAfterMS: &autoSleepAfterMS,
+		CreatedByID:      req.CreatedByID,
+		UpdatedByID:      req.CreatedByID,
 	}
 
 	if err := s.db.Create(project).Error; err != nil {
@@ -98,6 +109,25 @@ func (s *ProjectService) GetProject(id string, userID string) (*database.Project
 	}
 
 	return &project, nil
+}
+
+func (s *ProjectService) UpdateProjectRuntimeSettings(id string, userID string, req UpdateProjectRuntimeSettingsRequest) (*database.Project, error) {
+	if req.AutoSleepAfterMS != nil && *req.AutoSleepAfterMS < minAutoSleepAfterMS {
+		return nil, ErrInvalidAutoSleepAfter
+	}
+
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND created_by_id = ? AND is_active = ?", id, userID, true).
+		Update("auto_sleep_after_ms", req.AutoSleepAfterMS)
+
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, s.classifyProjectGuardFailure(id, userID, true)
+	}
+
+	return s.GetProject(id, userID)
 }
 
 func (s *ProjectService) UpdateProjectTargetImage(id string, userID string, image string) (*database.Project, error) {

@@ -10,23 +10,28 @@ type CreateProjectRequest struct {
 	Platform    string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
 }
 
+type UpdateProjectRuntimeSettingsRequest struct {
+	AutoSleepAfterMS *int64 `json:"auto_sleep_after_ms" validate:"omitempty,min=60000"`
+}
+
 type ProjectResponse struct {
-	ID              string     `json:"id"`
-	Name            string     `json:"name"`
-	Domain          string     `json:"domain"`
-	Description     string     `json:"description"`
-	Port            string     `json:"port"`
-	Platform        string     `json:"platform"`
-	Status          string     `json:"status"`
-	CurrentImageRef string     `json:"current_image_ref"`
-	TargetImageRef  string     `json:"target_image_ref"`
-	LastError       string     `json:"last_error"`
-	IsActive        bool       `json:"is_active"`
-	LastActiveAt    *time.Time `json:"last_active_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-	CreatedByID     string     `json:"created_by_id"`
-	UpdatedByID     string     `json:"updated_by_id"`
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Domain           string     `json:"domain"`
+	Description      string     `json:"description"`
+	Port             string     `json:"port"`
+	Platform         string     `json:"platform"`
+	Status           string     `json:"status"`
+	CurrentImageRef  string     `json:"current_image_ref"`
+	TargetImageRef   string     `json:"target_image_ref"`
+	LastError        string     `json:"last_error"`
+	AutoSleepAfterMS *int64     `json:"auto_sleep_after_ms"`
+	IsActive         bool       `json:"is_active"`
+	LastActiveAt     *time.Time `json:"last_active_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	CreatedByID      string     `json:"created_by_id"`
+	UpdatedByID      string     `json:"updated_by_id"`
 }
 
 type ListProjectsResponse struct {

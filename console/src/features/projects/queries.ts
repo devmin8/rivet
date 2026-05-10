@@ -7,6 +7,7 @@ import {
   listProjects,
   startProject,
   stopProject,
+  updateProjectRuntimeSettings,
 } from '~/features/projects/api'
 import type { Project, ProjectDisplayStatus, ProjectStats } from '~/features/projects/types'
 import { projectKeys } from '~/lib/query-keys'
@@ -92,6 +93,15 @@ export function useDeleteProject() {
 
   return useMutation({
     mutationFn: deleteProject,
+    onSuccess: () => invalidateProjectList(queryClient),
+  })
+}
+
+export function useUpdateProjectRuntimeSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateProjectRuntimeSettings,
     onSuccess: () => invalidateProjectList(queryClient),
   })
 }

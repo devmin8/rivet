@@ -17,6 +17,7 @@ const emit = defineEmits<{
   start: [projectId: string]
   stop: [projectId: string]
   delete: [projectId: string]
+  updateAutoSleep: [projectId: string, autoSleepAfterMS: number | null]
 }>()
 
 const domainHref = computed(() => {
@@ -102,10 +103,12 @@ const displayImage = computed(() => {
     <div class="lg:justify-self-end">
       <ProjectActionsMenu
         :status="item.status"
+        :auto-sleep-after-ms="item.project.auto_sleep_after_ms"
         :pending-action="pendingAction"
         @start="emit('start', item.project.id)"
         @stop="emit('stop', item.project.id)"
         @delete="emit('delete', item.project.id)"
+        @update-auto-sleep="emit('updateAutoSleep', item.project.id, $event)"
       />
     </div>
   </article>

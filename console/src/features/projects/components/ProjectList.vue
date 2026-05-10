@@ -12,6 +12,7 @@ const emit = defineEmits<{
   start: [projectId: string]
   stop: [projectId: string]
   delete: [projectId: string]
+  updateAutoSleep: [projectId: string, autoSleepAfterMS: number | null]
 }>()
 </script>
 
@@ -26,6 +27,9 @@ const emit = defineEmits<{
       @start="emit('start', $event)"
       @stop="emit('stop', $event)"
       @delete="emit('delete', $event)"
+      @update-auto-sleep="
+        (projectId, autoSleepAfterMS) => emit('updateAutoSleep', projectId, autoSleepAfterMS)
+      "
     />
   </div>
 </template>

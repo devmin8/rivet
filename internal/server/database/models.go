@@ -93,6 +93,8 @@ type Project struct {
 	Status    Status `gorm:"type:text;not null;default:stopped"`
 	LastError string `gorm:"type:text"`
 
+	AutoSleepAfterMS *int64
+
 	IsActive     bool       `gorm:"not null;default:true"`
 	LastActiveAt *time.Time `gorm:"index"`
 

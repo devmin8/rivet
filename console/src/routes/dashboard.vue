@@ -10,6 +10,7 @@ import {
   useProjectListData,
   useStartProject,
   useStopProject,
+  useUpdateProjectRuntimeSettings,
 } from '~/features/projects/queries'
 import type { ProjectAction } from '~/features/projects/types'
 import { ApiError } from '~/lib/errors'
@@ -18,11 +19,16 @@ const projectList = useProjectListData()
 const startProject = useStartProject()
 const stopProject = useStopProject()
 const deleteProject = useDeleteProject()
+const updateProjectRuntimeSettings = useUpdateProjectRuntimeSettings()
 
 const pendingActions = ref(new Map<string, ProjectAction>())
 
 const actionError = computed(() => {
-  const error = startProject.error.value ?? stopProject.error.value ?? deleteProject.error.value
+  const error =
+    startProject.error.value ??
+    stopProject.error.value ??
+    deleteProject.error.value ??
+    updateProjectRuntimeSettings.error.value
   return errorMessage(error, 'Unable to update project.')
 })
 
@@ -38,6 +44,15 @@ function handleDelete(projectId: string) {
   runProjectAction(projectId, 'delete', () => deleteProject.mutateAsync(projectId))
 }
 
+function handleUpdateAutoSleep(projectId: string, autoSleepAfterMS: number | null) {
+  runProjectAction(projectId, 'runtime-settings', () =>
+    updateProjectRuntimeSettings.mutateAsync({
+      projectID: projectId,
+      autoSleepAfterMS,
+    }),
+  )
+}
+
 function runProjectAction(
   projectId: string,
   action: ProjectAction,
@@ -50,6 +65,7 @@ function runProjectAction(
   startProject.reset()
   stopProject.reset()
   deleteProject.reset()
+  updateProjectRuntimeSettings.reset()
 
   setPendingAction(projectId, action)
 
@@ -152,6 +168,7 @@ function formatStatsFreshness(asOf: string | undefined): string {
         @start="handleStart"
         @stop="handleStop"
         @delete="handleDelete"
+        @update-auto-sleep="handleUpdateAutoSleep"
       />
     </section>
   </main>

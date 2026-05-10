@@ -7,7 +7,7 @@ export type ProjectStatus =
   | 'waking'
   | 'failed'
 export type ProjectDisplayStatus = ProjectStatus
-export type ProjectAction = 'start' | 'stop' | 'delete'
+export type ProjectAction = 'start' | 'stop' | 'delete' | 'runtime-settings'
 
 export interface Project {
   id: string
@@ -20,6 +20,7 @@ export interface Project {
   current_image_ref: string
   target_image_ref: string
   last_error: string
+  auto_sleep_after_ms: number | null
   is_active: boolean
   last_active_at: string | null
   created_at: string
