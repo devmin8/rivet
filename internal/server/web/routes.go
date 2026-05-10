@@ -8,6 +8,12 @@ import (
 )
 
 func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
+	projectService := services.NewProjectServiceWithLogger(webCtx.db, webCtx.docker, webCtx.log)
+	// This runs before the normal app routes because sleeping project domains
+	// proxy to rivet-server at arbitrary paths, not just /api.
+	wakeHandler := handlers.NewWakeHandler(projectService, webCtx.routes, webCtx.cfg.Domain, webCtx.log)
+	app.Use(wakeHandler.Handle)
+
 	// Root route for health check
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
@@ -31,7 +37,6 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 
 	v1.Get("/auth/me", authHandler.CurrentUser)
 
-	projectService := services.NewProjectServiceWithLogger(webCtx.db, webCtx.docker, webCtx.log)
 	projectHandler := handlers.NewProjectHandler(projectService, webCtx.routes, webCtx.log)
 	v1.Get("/projects/stats", projectHandler.GetProjectStats)
 	v1.Get("/projects", projectHandler.ListProjects)

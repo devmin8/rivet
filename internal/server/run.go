@@ -66,8 +66,11 @@ func (s *App) Run() error {
 	// keep Caddy in sync with project route changes missed by request-time syncs
 	s.routes.StartSyncer(ctx)
 
+	activity := services.NewActivityTracker(s.db, s.cfg.CaddyAccessLogPath, s.cfg.Domain, s.log)
+	activity.Start(ctx)
+
 	// reconciler to manage the deployment of projects
-	reconciler := services.NewReconciler(s.db, s.docker, s.log)
+	reconciler := services.NewReconciler(s.db, s.docker, s.routes, s.log)
 	reconciler.Start(ctx)
 
 	app.Hooks().OnListen(func(data fiber.ListenData) error {

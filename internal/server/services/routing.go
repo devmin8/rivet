@@ -75,7 +75,11 @@ func (s *RoutingService) routes() ([]caddy.Route, error) {
 	var projects []database.Project
 
 	err := s.db.
-		Where("is_active = ? AND status = ?", true, database.StatusRunning).
+		Where("is_active = ? AND status IN ?", true, []database.Status{
+			database.StatusRunning,
+			database.StatusSleeping,
+			database.StatusWaking,
+		}).
 		Find(&projects).
 		Error
 
@@ -86,14 +90,24 @@ func (s *RoutingService) routes() ([]caddy.Route, error) {
 	routes := make([]caddy.Route, 0, len(projects))
 
 	for _, project := range projects {
-		port, err := strconv.Atoi(strings.TrimSpace(project.Port))
+		containerName := project.ContainerName
+		portText := project.Port
+
+		if project.Status == database.StatusSleeping || project.Status == database.StatusWaking {
+			// Sleeping project traffic must reach rivet-server first so the wake handler
+			// can turn the public Host header into a project wake request.
+			containerName = s.defaultRoute.APIContainerName
+			portText = strconv.Itoa(s.defaultRoute.APIPort)
+		}
+
+		port, err := strconv.Atoi(strings.TrimSpace(portText))
 		if err != nil {
-			return nil, fmt.Errorf("invalid project port: project_id=%s port=%q: %w", project.ID, project.Port, err)
+			return nil, fmt.Errorf("invalid project port: project_id=%s port=%q: %w", project.ID, portText, err)
 		}
 
 		routes = append(routes, caddy.Route{
 			Domain:        strings.TrimSpace(project.Domain),
-			ContainerName: project.ContainerName,
+			ContainerName: containerName,
 			Port:          port,
 		})
 	}

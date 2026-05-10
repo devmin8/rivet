@@ -20,6 +20,11 @@ type Route struct {
 	Port          int
 }
 
+// AccessLogPath is inside the Caddy container. The install scripts mount the same host
+// directory into rivet-server at CADDY_ACCESS_LOG_PATH so the server can tail it.
+// Caddy file logs roll by default, so this file should not grow forever.
+const AccessLogPath = "/var/log/caddy/access.log"
+
 type DefaultRoute struct {
 	Domain               string
 	APIContainerName     string
@@ -91,6 +96,9 @@ func buildCaddyConfig(env config.AppEnv, defaultRoute DefaultRoute, routes []Rou
 	server := map[string]any{
 		"listen": []string{":80"},
 		"routes": caddyRoutes,
+		"logs": map[string]any{
+			"default_logger_name": "rivet_access",
+		},
 	}
 
 	if env == config.Dev {
@@ -100,6 +108,23 @@ func buildCaddyConfig(env config.AppEnv, defaultRoute DefaultRoute, routes []Rou
 	}
 
 	return map[string]any{
+		"logging": map[string]any{
+			"logs": map[string]any{
+				"default": map[string]any{
+					"exclude": []string{"http.log.access.rivet_access"},
+				},
+				"rivet_access": map[string]any{
+					"writer": map[string]any{
+						"output":   "file",
+						"filename": AccessLogPath,
+					},
+					"encoder": map[string]any{
+						"format": "json",
+					},
+					"include": []string{"http.log.access.rivet_access"},
+				},
+			},
+		},
 		"apps": map[string]any{
 			"http": map[string]any{
 				"servers": map[string]any{

@@ -17,11 +17,12 @@ const (
 )
 
 type ServerEnv struct {
-	Port     int    `validate:"required"`
-	Domain   string `validate:"required,domain_or_url"`
-	DBPath   string `validate:"required"`
-	CaddyURL string `validate:"required,url"`
-	AppEnv   AppEnv `validate:"required,oneof=dev prod"`
+	Port               int    `validate:"required"`
+	Domain             string `validate:"required,domain_or_url"`
+	DBPath             string `validate:"required"`
+	CaddyURL           string `validate:"required,url"`
+	CaddyAccessLogPath string `validate:"required"`
+	AppEnv             AppEnv `validate:"required,oneof=dev prod"`
 }
 
 var validate = validation.New()
@@ -50,11 +51,12 @@ func getConfig() (*ServerEnv, error) {
 	}
 
 	return &ServerEnv{
-		Port:     port,
-		Domain:   env("DOMAIN"),
-		DBPath:   env("DB_PATH"),
-		CaddyURL: envWithDefault("CADDY_URL", "http://rivet-caddy:2019"),
-		AppEnv:   AppEnv(envWithDefault("APP_ENV", "dev")),
+		Port:               port,
+		Domain:             env("DOMAIN"),
+		DBPath:             env("DB_PATH"),
+		CaddyURL:           envWithDefault("CADDY_URL", "http://rivet-caddy:2019"),
+		CaddyAccessLogPath: envWithDefault("CADDY_ACCESS_LOG_PATH", "/var/log/rivet-caddy/access.log"),
+		AppEnv:             AppEnv(envWithDefault("APP_ENV", "dev")),
 	}, nil
 }
 

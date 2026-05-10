@@ -32,9 +32,10 @@ setup_configuration() {
 	CADDY_DIR="$RIVET_HOME/caddy"
 	CADDY_DATA_DIR="$CADDY_DIR/data"
 	CADDY_CONFIG_DIR="$CADDY_DIR/config"
+	CADDY_LOG_DIR="$CADDY_DIR/logs"
 	CADDYFILE="$CADDY_DIR/Caddyfile"
 
-	mkdir -p "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR"
+	mkdir -p "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR" "$CADDY_LOG_DIR"
 }
 
 ensure_repository() {
@@ -56,7 +57,7 @@ cleanup() {
 	docker network rm "$RIVET_NETWORK_NAME" 2>/dev/null || true
 
 	# Remove local state
-	rm -rf "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR"
+	rm -rf "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR" "$CADDY_LOG_DIR"
 
 	# Optional full Docker prune (ONLY when explicitly enabled)
 	if [ "${RIVET_FULL_PRUNE:-0}" = "1" ]; then
@@ -65,7 +66,7 @@ cleanup() {
 	fi
 
 	# Recreate dirs
-	mkdir -p "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR"
+	mkdir -p "$RIVET_SERVER_DATA_DIR" "$CADDY_DATA_DIR" "$CADDY_CONFIG_DIR" "$CADDY_LOG_DIR"
 }
 
 write_caddyfile() {
@@ -96,7 +97,9 @@ start_rivet_server() {
 		-e DOMAIN=$RIVET_DOMAIN \
 		-e APP_ENV=$APP_ENV \
 		-e DB_PATH=/data/rivet.db \
+		-e CADDY_ACCESS_LOG_PATH=/var/log/rivet-caddy/access.log \
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
+		-v "$CADDY_LOG_DIR:/var/log/rivet-caddy:ro" \
 		-v "$RIVET_DOCKER_SOCK:/var/run/docker.sock" \
 		rivet-server:$APP_ENV >/dev/null
 }
@@ -113,6 +116,7 @@ start_caddy() {
 		-v "$CADDYFILE:/etc/caddy/Caddyfile:ro" \
 		-v "$CADDY_DATA_DIR:/data" \
 		-v "$CADDY_CONFIG_DIR:/config" \
+		-v "$CADDY_LOG_DIR:/var/log/caddy" \
 		caddy:2-alpine >/dev/null
 }
 

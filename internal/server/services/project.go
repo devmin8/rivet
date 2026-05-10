@@ -19,9 +19,10 @@ var ErrProjectInactive = errors.New("project is not active")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
 var ErrNoTargetImage = errors.New("project has no target image")
 var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be at least 60000 ms")
+var ErrProjectStateChanged = errors.New("project runtime state changed")
 
 const defaultAutoSleepAfterMS int64 = 60_000 // 1 minute
-const minAutoSleepAfterMS int64 = 60_000 // 1 minute
+const minAutoSleepAfterMS int64 = 60_000     // 1 minute
 
 type ProjectService struct {
 	db     *gorm.DB
@@ -109,6 +110,36 @@ func (s *ProjectService) GetProject(id string, userID string) (*database.Project
 	}
 
 	return &project, nil
+}
+
+// GetActiveProjectByDomain is used for public project traffic. At the Caddy/wake
+// boundary, the request only has a Host header, not an authenticated project ID.
+func (s *ProjectService) GetActiveProjectByDomain(domain string) (*database.Project, error) {
+	var project database.Project
+	if err := s.db.Where("domain = ? AND is_active = ?", strings.TrimSpace(domain), true).First(&project).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, err
+	}
+
+	return &project, nil
+}
+
+// RequestWakeByDomain turns the public project host into a wake request without
+// coupling the unauthenticated wake path to dashboard/API project IDs.
+func (s *ProjectService) RequestWakeByDomain(domain string) (*database.Project, error) {
+	res := s.db.Model(&database.Project{}).
+		Where("domain = ? AND is_active = ? AND status = ?", strings.TrimSpace(domain), true, database.StatusSleeping).
+		Updates(map[string]any{
+			"status":     database.StatusWaking,
+			"last_error": "",
+		})
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return s.GetActiveProjectByDomain(domain)
 }
 
 func (s *ProjectService) UpdateProjectRuntimeSettings(id string, userID string, req UpdateProjectRuntimeSettingsRequest) (*database.Project, error) {
@@ -273,10 +304,95 @@ func (s *ProjectService) ActiveRuntimeProjects() ([]database.Project, error) {
 		Where("is_active = ? AND status IN ?", true, []database.Status{
 			database.StatusStarting,
 			database.StatusRunning,
-			database.StatusWaking,
 		}).
 		Find(&projects).Error
 	return projects, err
+}
+
+func (s *ProjectService) WakingProjects() ([]database.Project, error) {
+	var projects []database.Project
+	err := s.db.
+		Where("is_active = ? AND status = ?", true, database.StatusWaking).
+		Find(&projects).Error
+	return projects, err
+}
+
+func (s *ProjectService) RunningAutoSleepProjects() ([]database.Project, error) {
+	var projects []database.Project
+	err := s.db.
+		Where("is_active = ? AND status = ? AND auto_sleep_after_ms IS NOT NULL", true, database.StatusRunning).
+		Find(&projects).Error
+	return projects, err
+}
+
+func (s *ProjectService) SleepingProjectsWithContainer() ([]database.Project, error) {
+	var projects []database.Project
+	err := s.db.
+		Where("is_active = ? AND status = ? AND container_id <> ?", true, database.StatusSleeping, "").
+		Find(&projects).Error
+	return projects, err
+}
+
+func (s *ProjectService) MarkSleeping(id string) error {
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND status = ?", id, database.StatusRunning).
+		Updates(map[string]any{
+			"status":     database.StatusSleeping,
+			"last_error": "",
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrProjectStateChanged
+	}
+
+	return nil
+}
+
+func (s *ProjectService) MarkSleepAborted(id string, sleepErr error) error {
+	return s.db.Model(&database.Project{}).
+		Where("id = ? AND status = ?", id, database.StatusSleeping).
+		Updates(map[string]any{
+			"status":     database.StatusRunning,
+			"last_error": sleepErr.Error(),
+		}).Error
+}
+
+func (s *ProjectService) MarkSlept(id string) error {
+	return s.db.Model(&database.Project{}).
+		Where("id = ? AND status = ?", id, database.StatusSleeping).
+		Update("container_id", "").Error
+}
+
+func (s *ProjectService) MarkWakeRunning(id string, targetImage string, containerID string) error {
+	res := s.db.Model(&database.Project{}).
+		Where("id = ? AND status = ?", id, database.StatusWaking).
+		Updates(map[string]any{
+			"current_image_ref": targetImage,
+			"status":            database.StatusRunning,
+			"container_id":      containerID,
+			"last_error":        "",
+			"last_active_at":    time.Now().UTC(),
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrProjectStateChanged
+	}
+
+	return nil
+}
+
+func (s *ProjectService) MarkWakeFailed(id string, err error) error {
+	return s.db.Model(&database.Project{}).
+		Where("id = ? AND status = ?", id, database.StatusWaking).
+		Updates(map[string]any{
+			"status":       database.StatusFailed,
+			"last_error":   err.Error(),
+			"container_id": "",
+		}).Error
 }
 
 func (s *ProjectService) MarkReconciledRunning(id string, targetImage string, containerID string) error {
@@ -287,7 +403,6 @@ func (s *ProjectService) MarkReconciledRunning(id string, targetImage string, co
 			"status":            database.StatusRunning,
 			"container_id":      containerID,
 			"last_error":        "",
-			"last_active_at":    time.Now().UTC(),
 		}).Error
 }
 
