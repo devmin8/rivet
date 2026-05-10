@@ -1,8 +1,8 @@
 # Project Runtime Stats
 
-Rivet shows lightweight runtime stats in the project list: CPU, memory, network I/O, and process count for running projects.
+Rivet shows lightweight runtime stats in the project list: CPU, memory, network I/O, and process count for projects that are currently `running`.
 
-This is dashboard data, not billing data and not a full observability system. The goal is: "is this project alive, idle, busy, or suspicious?" The endpoint must stay fast enough for the project list.
+These stats are dashboard data, not billing data and not a full observability system. The goal is to answer: "is this project alive, idle, busy, or suspicious?" The endpoint must stay fast enough for the project list.
 
 ## API
 
@@ -15,11 +15,12 @@ Example:
 
 ```json
 {
-  "as_of": "2026-05-08T14:30:00Z",
-  "stale": false,
+  "as_of": "2026-05-09T14:30:00Z",
   "items": [
     {
       "project_id": "project-uuid",
+      "captured_at": "2026-05-09T14:29:57Z",
+      "stale": false,
       "cpu_percent": 2.4,
       "cpu_sample_window_seconds": 5.01,
       "memory_usage_bytes": 73400320,
@@ -33,19 +34,23 @@ Example:
 }
 ```
 
-`items` is sparse. A stopped project or missing container means that project is omitted. If Docker stats for a project fail but Rivet has a cached row, the cached row may be returned with `stale: true`; otherwise the project is omitted. The console treats missing stats as "not available" and shows a small stale warning when any requested live stat could not be refreshed.
+`items` is sparse. Stopped, sleeping, failed, or otherwise non-running projects are omitted. If a running project's fresh Docker stats read fails and Rivet has a cached row, that row is returned with `stale: true` and the original `captured_at`. If there is no cached row, the project is omitted and the console shows stats unavailable.
+
+There is no response-level `stale` flag. Staleness is row-wise because one project can have stale metrics while another project's metrics are fresh.
 
 ## Why A Separate Endpoint
 
-`GET /projects` should stay a fast database read. Runtime stats come from Docker, have different failure behavior, and can be slower or stale. The console should call `/projects` and `/projects/stats` in parallel and merge by `project_id`.
+`GET /projects` should stay a fast database read for persisted project metadata and lifecycle status. Runtime stats come from Docker, have different failure behavior, and can be slower or stale. The console calls `/projects` and `/projects/stats` in parallel and merges stats by `project_id`.
 
-Do not expose Docker container IDs or names in public API responses. Docker does not know Rivet authorization. The service first loads projects owned by the authenticated user, then reads stats only for those project containers.
+Do not expose Docker container IDs or names in public stats API responses. Docker does not know Rivet authorization. The service first loads projects owned by the authenticated user, then reads stats only for those project containers.
 
 ## Data Source
 
 Stats come from Docker Engine's `/containers/{id}/stats` API through the Go Docker client.
 
-The Docker lookup key is `Project.ContainerName`, not `ContainerID`. The name is stable for a project (`rivet-<project-id>`). The ID can change when reconciliation recreates a container.
+The Docker lookup key is `Project.ContainerName`, not `ContainerID`. The name is stable for a project (`rivet-<project-id>`). The ID can change when Rivet recreates a container.
+
+Only projects with `status = running` are eligible for runtime stats. Lifecycle truth lives on the project row and is maintained by the reconciler; stats are optional metrics layered on top.
 
 ## Collection Strategy
 
@@ -56,9 +61,9 @@ Stream: false
 IncludePreviousSample: false
 ```
 
-This returns one immediate sample. Do not use Docker's previous-sample option. It makes Docker wait roughly one second so it can compute CPU for us. In local measurement, the old path took about `1.96s`; one-shot took about `0.03s`.
+This returns one immediate sample. Do not use Docker's previous-sample option. It can block while Docker gathers a second sample. Rivet keeps the endpoint fast by collecting one immediate sample and comparing it with the previous sample stored in Rivet's cache.
 
-For 50 projects, the service fans out container stats reads concurrently and waits once for all results. It should not read project 1, then project 2, then project 3.
+For multiple projects, the service fans out container stats reads concurrently and waits once for all results. It should not read project 1, then project 2, then project 3.
 
 ## CPU Calculation
 
@@ -102,11 +107,11 @@ The cache field name depends on cgroup and Docker version:
 
 This is why the code checks those field names. They are Docker/Linux memory-stat names, not Rivet concepts.
 
-All memory and network values in the API are bytes. The console can format bytes as MiB/GiB for display.
+All memory and network values in the API are bytes. The console formats bytes as MiB/GiB for display.
 
-## Caching
+## Caching And Staleness
 
-Use an in-memory TTL cache.
+Rivet uses an in-memory TTL cache.
 
 - Key: project ID
 - TTL: 5 seconds
@@ -115,31 +120,45 @@ Use an in-memory TTL cache.
 
 The mutex serializes concurrent HTTP refreshes, but collection inside one refresh is concurrent per project.
 
-This is enough for the MVP. A background sampler and SQLite history can come later if we add charts or long-term metrics.
+Stale behavior is row-wise:
+
+- Fresh cache entry exists inside the TTL: return the cached row with `stale: false` and its existing `captured_at`.
+- Docker stats read succeeds after a cache miss/expiry: return the row with `stale: false` and `captured_at = now`.
+- Fresh Docker stats read fails and a cached row exists: return the cached row with `stale: true` and the cached `captured_at`.
+- Fresh Docker stats read fails and no cached row exists: omit that project from `items`.
+- Docker daemon unavailable: return any cached rows as stale; omit projects without cache.
+
+The console polls project status and runtime stats while the dashboard is open. Polling is intentionally simple for now. Later, we can replace or supplement it with stats-driven query invalidation, SSE, or WebSocket updates.
 
 ## Failure Behavior
 
-Stats are best-effort.
+Stats are best-effort, but some stats failures reveal runtime truth.
 
-- One project fails: return its cached row if available, set `stale: true`, and otherwise omit that project.
-- Docker unavailable: return available cached stats and `stale: true`.
-- No cached stats: return an empty `items` array and `stale: true`.
-- Log failures server-side with project ID and container name.
+- If Docker stats fails because the container is missing or not running, Rivet marks the project `failed` and records `last_error`.
+- If Docker itself is unavailable or another non-container-specific error occurs, Rivet does not mark all projects failed. It returns cached stats where possible and logs the error.
+- The project list must not fail because optional runtime stats failed.
 
-The project list must not fail because optional runtime stats failed.
+This means a project may briefly show stale metrics before the project row refreshes to `failed`. That is acceptable. Runtime status is persisted truth maintained by reconciliation; stats are recent metrics layered on top.
 
-## Why This Is Acceptable
+## Why This Tradeoff
 
-This style is normal for PaaS/runtime dashboards.
+`GET /projects` does not inspect Docker on every read. It returns database truth. The reconciler updates that truth from Docker reality in the background, and the dashboard polls frequently enough to keep the UI close to current.
 
-- Docker exposes live container CPU, memory, network, block I/O, and PID stats. Docker CLI also subtracts memory cache before showing `MEM USAGE`: https://docs.docker.com/reference/cli/docker/container/stats/
-- Kubernetes `kubectl top` explicitly says its numbers may not match OS tools because they are recent, stable metrics rather than pinpoint-accurate live truth: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_top/
-- Kubernetes Metrics Server collects CPU and memory every 15 seconds for autoscaling and quick debugging, not exact monitoring: https://kubernetes-sigs.github.io/metrics-server/
-- Coolify uses Sentinel, a lightweight agent for server/container CPU and RAM metrics, with a configurable collection interval and local storage: https://github.com/coollabsio/sentinel
-- Dokploy exposes configurable server/container refresh rates and warns that lower intervals improve precision but increase load: https://docs.dokploy.com/docs/core/monitoring
-- CapRover delegates richer monitoring to Netdata instead of blocking its main app APIs on exact stats collection: https://caprover.com/docs/resource-monitoring.html
+This is deliberate:
 
-The tradeoff is deliberate: fast, recent, explainable stats in the project list. For detailed historical observability, use a dedicated metrics stack later.
+- Reads stay fast and side-effect-free.
+- Docker outages do not make the main project list slow or destructive.
+- Reconciler owns runtime state transitions.
+- Stats can be stale without pretending project metadata is stale.
+
+The tradeoff is eventual consistency: if a container crashes, the UI may show `running` until the reconciler or stats endpoint marks the project `failed` and the project list refetches. We accept that for now to keep the architecture simple and robust.
+
+## External Reading
+
+- Docker `docker stats` docs explain live container stats, stopped containers returning no data, and memory cache subtraction: https://docs.docker.com/reference/cli/docker/container/stats/
+- Kubernetes kubelet sync loop explains the common controller pattern of reconciling desired state with actual runtime state: https://kubernetes.io/docs/reference/node/kubelet-sync-loop/
+- Kubernetes Metrics Server collects recent resource metrics for autoscaling/debugging and is not a full monitoring pipeline: https://kubernetes-sigs.github.io/metrics-server/
+- `kubectl top` documents that displayed metrics are recent, stable resource metrics rather than exact OS-tool parity: https://kubernetes.io/docs/reference/kubectl/generated/kubectl_top/
 
 ## Future Work
 
@@ -147,3 +166,4 @@ The tradeoff is deliberate: fast, recent, explainable stats in the project list.
 - Add disk I/O when we have a clear UI story for Docker's block I/O semantics.
 - Add per-node collection if Rivet runs projects across multiple hosts.
 - Add deeper project-detail stats without coupling them to `GET /projects`.
+- Consider replacing polling with stats-driven invalidation, SSE, or WebSocket project events.
