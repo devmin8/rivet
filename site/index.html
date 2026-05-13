@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Rivet — Simple self-hosted PaaS for Docker apps</title>
+    <meta
+      name="description"
+      content="Rivet is a simple self-hosted PaaS for shipping Docker apps to your VPS with SSL, domain setup, encrypted secrets, auto-sleep, and app-level monitoring."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Devmin" />
+    <link rel="canonical" href="https://getrivet.app/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://getrivet.app/" />
+    <meta property="og:title" content="Rivet — Simple self-hosted PaaS for Docker apps" />
+    <meta
+      property="og:description"
+      content="Ship Docker apps to your VPS with SSL, domains, encrypted secrets, auto-sleep, and app-level monitoring. Rivet is currently in development."
+    />
+    <meta property="og:site_name" content="Rivet" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rivet — Simple self-hosted PaaS for Docker apps" />
+    <meta
+      name="twitter:description"
+      content="A minimal self-hosted PaaS for shipping Docker apps to your own VPS."
+    />
+
+    <meta name="theme-color" content="#0b1720" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+            },
+            colors: {
+              ink: '#0b1720',
+              muted: '#516070',
+              line: '#dfe5ec',
+              paper: '#f7f4ef',
+              card: '#ffffff',
+            },
+          },
+        },
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Rivet",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux",
+        "url": "https://getrivet.app/",
+        "codeRepository": "https://github.com/devmin8/rivet",
+        "description": "Rivet is a simple self-hosted PaaS for shipping Docker apps to your VPS with SSL, domain setup, encrypted secrets, auto-sleep, and app-level monitoring.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+  </head>
+
+  <body class="bg-paper text-ink antialiased">
+    <header class="border-b border-line/80 bg-paper/90 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
+        <a href="/" class="flex items-center gap-3" aria-label="Rivet home">
+          <span
+            class="grid h-9 w-9 place-items-center rounded-xl bg-ink text-sm font-bold text-white"
+            >R</span
+          >
+          <span class="text-lg font-semibold tracking-tight">Rivet</span>
+        </a>
+
+        <nav
+          class="hidden items-center gap-7 text-sm text-muted md:flex"
+          aria-label="Main navigation"
+        >
+          <a class="hover:text-ink" href="#features">Features</a>
+          <a class="hover:text-ink" href="#install">Install</a>
+          <a class="hover:text-ink" href="#roadmap">Roadmap</a>
+          <a class="hover:text-ink" href="https://github.com/devmin8/rivet">GitHub</a>
+        </nav>
+
+        <a
+          href="https://github.com/devmin8/rivet"
+          class="rounded-full border border-line bg-white px-4 py-2 text-sm font-medium shadow-sm hover:border-ink"
+        >
+          View repo
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section class="mx-auto max-w-6xl px-5 pb-16 pt-16 md:pb-24 md:pt-24">
+        <div class="max-w-3xl">
+          <div
+            class="mb-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
+          >
+            In active development — APIs and commands may change
+          </div>
+
+          <h1 class="text-5xl font-semibold tracking-tight md:text-7xl">
+            A simple self-hosted PaaS for your VPS.
+          </h1>
+
+          <p class="mt-6 max-w-2xl text-lg leading-8 text-muted md:text-xl">
+            Rivet helps you ship Docker apps to your own server with SSL, domain routing, encrypted
+            secrets, auto-sleep, and per-app runtime monitoring.
+          </p>
+
+          <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="#install"
+              class="rounded-full bg-ink px-6 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-black"
+            >
+              Install Rivet
+            </a>
+            <a
+              href="https://github.com/devmin8/rivet"
+              class="rounded-full border border-line bg-white px-6 py-3 text-center text-sm font-semibold text-ink shadow-sm hover:border-ink"
+            >
+              GitHub repository
+            </a>
+          </div>
+        </div>
+
+        <div class="mt-14 overflow-hidden rounded-3xl border border-line bg-[#08131d] shadow-2xl">
+          <div class="flex items-center gap-2 border-b border-white/10 px-5 py-4">
+            <span class="h-3 w-3 rounded-full bg-red-400"></span>
+            <span class="h-3 w-3 rounded-full bg-yellow-400"></span>
+            <span class="h-3 w-3 rounded-full bg-green-400"></span>
+            <span class="ml-3 text-sm text-slate-400">terminal</span>
+          </div>
+          <pre
+            class="overflow-x-auto p-5 text-sm leading-7 text-slate-200"
+          ><code>$ curl -fsSL https://raw.githubusercontent.com/devmin8/rivet/main/scripts/install.sh | sh
+
+# Guided setup starts
+# After install:
+# https://console.your-given-domain.com</code></pre>
+        </div>
+      </section>
+
+      <section id="features" class="border-y border-line bg-white">
+        <div class="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <div class="max-w-2xl">
+            <h2 class="text-3xl font-semibold tracking-tight md:text-4xl">What Rivet does today</h2>
+            <p class="mt-4 text-lg leading-8 text-muted">
+              The goal is not to be a giant platform. The goal is to make the common VPS deployment
+              path clean, secure, and understandable.
+            </p>
+          </div>
+
+          <div class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Create projects</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Create and manage apps from Rivet with the core project lifecycle in one place.
+              </p>
+            </article>
+
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Automatic SSL</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Set up HTTPS for deployed apps so they are reachable securely on their domain.
+              </p>
+            </article>
+
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Cloudflare DNS support</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Provide a Cloudflare token and Rivet can create the required domain entry for you.
+              </p>
+            </article>
+
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Domain-based app access</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Once configured, apps become available automatically on the given domain.
+              </p>
+            </article>
+
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Auto-sleep</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Apps can sleep when there are no requests. Sleep timing is configurable per
+                deployment needs.
+              </p>
+            </article>
+
+            <article class="rounded-2xl border border-line bg-card p-6 shadow-sm">
+              <h3 class="font-semibold">Encrypted secrets</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                Manage environment variables and secrets safely. Secrets are encrypted and injected
+                at runtime.
+              </p>
+            </article>
+
+            <article
+              class="rounded-2xl border border-line bg-card p-6 shadow-sm md:col-span-2 lg:col-span-3"
+            >
+              <h3 class="font-semibold">Per-app monitoring</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                View CPU, memory, and network usage for each individual app running on your server.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <h2 class="text-3xl font-semibold tracking-tight md:text-4xl">Install on your VPS</h2>
+            <p class="mt-4 text-lg leading-8 text-muted">
+              Run the guided installer on your server. After installation, the Rivet console should
+              be available at your configured console domain.
+            </p>
+          </div>
+
+          <div class="space-y-5">
+            <div class="rounded-3xl border border-line bg-white p-5 shadow-sm">
+              <p class="mb-3 text-sm font-semibold">Install server</p>
+              <pre
+                class="overflow-x-auto rounded-2xl bg-[#08131d] p-4 text-sm leading-7 text-slate-200"
+              ><code>curl -fsSL https://raw.githubusercontent.com/devmin8/rivet/main/scripts/install.sh | sh</code></pre>
+            </div>
+
+            <div class="rounded-3xl border border-line bg-white p-5 shadow-sm">
+              <p class="mb-3 text-sm font-semibold">Download CLI</p>
+              <p class="text-sm leading-6 text-muted">
+                Download the Rivet CLI from the releases section in the GitHub repository.
+              </p>
+              <a
+                class="mt-3 inline-flex text-sm font-semibold text-ink underline underline-offset-4"
+                href="https://github.com/devmin8/rivet"
+              >
+                github.com/devmin8/rivet
+              </a>
+            </div>
+
+            <div class="rounded-3xl border border-line bg-white p-5 shadow-sm">
+              <p class="mb-3 text-sm font-semibold">CLI examples</p>
+              <pre
+                class="overflow-x-auto rounded-2xl bg-[#08131d] p-4 text-sm leading-7 text-slate-200"
+              ><code># Create an account
+rivet-cli signup
+
+# Sign in
+rivet-cli signin
+
+# Ship an existing project
+rivet-cli ship --project my-app --domain my-app.example.com
+
+# Ship a new project
+rivet-cli ship --new --name my-app --domain my-app.example.com</code></pre>
+              <p class="mt-3 text-xs leading-5 text-muted">
+                Command flags are placeholders and may change while Rivet is in development.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap" class="border-y border-line bg-white">
+        <div class="mx-auto max-w-6xl px-5 py-16 md:py-24">
+          <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <h2 class="text-3xl font-semibold tracking-tight md:text-4xl">What is coming next</h2>
+              <p class="mt-4 text-lg leading-8 text-muted">
+                Rivet is being built in public and the roadmap is focused on practical
+                infrastructure features for small teams and self-hosters.
+              </p>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Docker logs</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  View and inspect app logs from the console.
+                </p>
+              </div>
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Multi-server management</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  Manage multiple servers from one Rivet control plane.
+                </p>
+              </div>
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Server monitoring</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  Track server-level CPU, memory, disk, swap, and runtime health.
+                </p>
+              </div>
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Static site hosting</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  Host static sites directly without needing a Docker image.
+                </p>
+              </div>
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Automatic image builds</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  Build Docker images automatically with Railpack.
+                </p>
+              </div>
+              <div class="rounded-2xl border border-line p-5">
+                <h3 class="font-semibold">Databases and backups</h3>
+                <p class="mt-2 text-sm leading-6 text-muted">
+                  Database provisioning and backup workflows for hosted apps.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-6xl px-5 py-16 md:py-24">
+        <div class="rounded-4xl bg-ink p-8 text-white md:p-12">
+          <div class="max-w-3xl">
+            <p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Development preview
+            </p>
+            <h2 class="mt-4 text-3xl font-semibold tracking-tight md:text-5xl">
+              Built for people who want their deployment stack to stay understandable.
+            </h2>
+            <p class="mt-5 text-lg leading-8 text-slate-300">
+              Rivet is early, but the direction is clear: minimal self-hosted infrastructure, secure
+              defaults, and enough automation to make VPS deployments pleasant.
+            </p>
+            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#install"
+                class="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-ink hover:bg-slate-100"
+              >
+                Try the installer
+              </a>
+              <a
+                href="https://github.com/devmin8/rivet"
+                class="rounded-full border border-white/20 px-6 py-3 text-center text-sm font-semibold text-white hover:bg-white/10"
+              >
+                Follow on GitHub
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-line">
+      <div
+        class="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-muted md:flex-row md:items-center md:justify-between"
+      >
+        <p>© <span id="year"></span> Rivet. Built by Devmin.</p>
+        <div class="flex gap-5">
+          <a class="hover:text-ink" href="https://getrivet.app/">getrivet.app</a>
+          <a class="hover:text-ink" href="https://github.com/devmin8/rivet">GitHub</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear()
+    </script>
+  </body>
+</html>
