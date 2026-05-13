@@ -15,6 +15,30 @@ need_cmd() {
 	command -v "$1" >/dev/null 2>&1 || fail "$1 is required"
 }
 
+generate_secret_key() {
+	od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+}
+
+is_hex_secret_key() {
+	[ ${#1} -eq 64 ] && printf '%s' "$1" | grep -Eq '^[0-9A-Fa-f]{64}$'
+}
+
+is_base64_secret_key() {
+	command -v openssl >/dev/null 2>&1 || return 1
+	decoded_len=$(
+		printf '%s' "$1" | openssl enc -base64 -d -A 2>/dev/null | wc -c | tr -d ' '
+	)
+	[ "$decoded_len" = "32" ]
+}
+
+validate_secret_key() {
+	if is_hex_secret_key "$RIVET_SECRET_KEY" || is_base64_secret_key "$RIVET_SECRET_KEY"; then
+		return
+	fi
+
+	fail "RIVET_SECRET_KEY must be a 64-character hex string or base64-encoded 32-byte key"
+}
+
 setup_configuration() {
 	REPO_ROOT=$(pwd)
 
@@ -27,6 +51,7 @@ setup_configuration() {
 	RIVET_SERVER_DATA_DIR="$RIVET_HOME/server/data"
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
 	RIVET_DOCKER_SOCK=${RIVET_DOCKER_SOCK:-"/var/run/docker.sock"}
+	RIVET_SECRET_KEY=${RIVET_SECRET_KEY:-$(generate_secret_key)}
 
 	# Caddy config
 	CADDY_DIR="$RIVET_HOME/caddy"
@@ -45,6 +70,7 @@ ensure_repository() {
 	[ -f "$REPO_ROOT/console/Dockerfile" ] || fail "console/Dockerfile not found at $REPO_ROOT"
 	[ -f "$REPO_ROOT/console/package.json" ] || fail "console/package.json not found at $REPO_ROOT"
 	[ -S "$RIVET_DOCKER_SOCK" ] || fail "Docker socket not found at $RIVET_DOCKER_SOCK"
+	validate_secret_key
 }
 
 cleanup() {
@@ -96,6 +122,7 @@ start_rivet_server() {
 		-e PORT=3000 \
 		-e DOMAIN=$RIVET_DOMAIN \
 		-e APP_ENV=$APP_ENV \
+		-e RIVET_SECRET_KEY=$RIVET_SECRET_KEY \
 		-e DB_PATH=/data/rivet.db \
 		-e CADDY_ACCESS_LOG_PATH=/var/log/rivet-caddy/access.log \
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
@@ -159,6 +186,7 @@ main() {
 
 	log "✅ Rivet is running at http://$RIVET_DOMAIN"
 	log "📦 Persistent state is in $RIVET_HOME"
+	log "🔑 RIVET_SECRET_KEY=$RIVET_SECRET_KEY"
 	log ""
 	log "Tip: run with RIVET_FULL_PRUNE=1 for a completely clean Docker state"
 }

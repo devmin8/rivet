@@ -8,7 +8,7 @@ import (
 )
 
 func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
-	projectService := services.NewProjectServiceWithLogger(webCtx.db, webCtx.docker, webCtx.log)
+	projectService := services.NewProjectServiceWithLogger(webCtx.db, webCtx.docker, webCtx.cfg.SecretKey, webCtx.log)
 	// This runs before the normal app routes because sleeping project domains
 	// proxy to rivet-server at arbitrary paths, not just /api.
 	wakeHandler := handlers.NewWakeHandler(projectService, webCtx.routes, webCtx.cfg.Domain, webCtx.log)
@@ -38,10 +38,14 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Get("/auth/me", authHandler.CurrentUser)
 
 	projectHandler := handlers.NewProjectHandler(projectService, webCtx.routes, webCtx.log)
+	projectEnvHandler := handlers.NewProjectEnvHandler(services.NewProjectEnvService(webCtx.db, webCtx.cfg.SecretKey))
 	v1.Get("/projects/stats", projectHandler.GetProjectStats)
 	v1.Get("/projects", projectHandler.ListProjects)
 	v1.Post("/projects", projectHandler.CreateProject)
 	v1.Get("/projects/:id", projectHandler.GetProject)
+	v1.Get("/projects/:id/env", projectEnvHandler.ListProjectEnv)
+	v1.Put("/projects/:id/env/:key", projectEnvHandler.UpsertProjectEnv)
+	v1.Delete("/projects/:id/env/:key", projectEnvHandler.DeleteProjectEnv)
 	v1.Patch("/projects/:id/runtime-settings", projectHandler.UpdateProjectRuntimeSettings)
 	v1.Post("/projects/:id/start", projectHandler.StartProject)
 	v1.Post("/projects/:id/stop", projectHandler.StopProject)

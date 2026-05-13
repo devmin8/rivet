@@ -25,9 +25,9 @@ type routeSyncer interface {
 	Sync(ctx context.Context) error
 }
 
-func NewReconciler(db *gorm.DB, dockerClient *docker.Client, routes routeSyncer, log *slog.Logger) *Reconciler {
+func NewReconciler(db *gorm.DB, dockerClient *docker.Client, routes routeSyncer, secretKey []byte, log *slog.Logger) *Reconciler {
 	return &Reconciler{
-		projects: NewProjectService(db, dockerClient),
+		projects: NewProjectService(db, dockerClient, secretKey),
 		docker:   dockerClient,
 		routes:   routes,
 		log:      log,
@@ -93,7 +93,15 @@ func (r *Reconciler) wakeProject(ctx context.Context, project database.Project) 
 		return r.syncRoutes(ctx)
 	}
 
-	containerID, err := r.docker.StartContainer(ctx, project.ContainerName, project.ID, image)
+	env, err := r.projects.env.RuntimeEnv(project.ID)
+	if err != nil {
+		if markErr := r.projects.MarkWakeFailed(project.ID, err); markErr != nil {
+			return errors.Join(err, markErr)
+		}
+		return r.syncRoutes(ctx)
+	}
+
+	containerID, err := r.docker.StartContainer(ctx, project.ContainerName, project.ID, image, env)
 	if err != nil {
 		if markErr := r.projects.MarkWakeFailed(project.ID, err); markErr != nil {
 			return errors.Join(err, markErr)

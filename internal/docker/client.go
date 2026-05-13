@@ -144,7 +144,7 @@ func (c *Client) EnsureNetwork(ctx context.Context) error {
 }
 
 // StartContainer creates and starts one Rivet-managed project container.
-func (c *Client) StartContainer(ctx context.Context, containerName string, projectID string, image string) (string, error) {
+func (c *Client) StartContainer(ctx context.Context, containerName string, projectID string, image string, env []string) (string, error) {
 	if err := c.EnsureNetwork(ctx); err != nil {
 		return "", err
 	}
@@ -152,6 +152,7 @@ func (c *Client) StartContainer(ctx context.Context, containerName string, proje
 	created, err := c.api.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Name: containerName,
 		Config: &container.Config{
+			Env:   env,
 			Image: image,
 			Labels: map[string]string{
 				"rivet.project_id":     projectID,

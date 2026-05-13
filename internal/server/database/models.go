@@ -118,6 +118,37 @@ func (p *Project) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
+type ProjectEnvKind string
+
+const (
+	ProjectEnvKindPlain  ProjectEnvKind = "plain"
+	ProjectEnvKindSecret ProjectEnvKind = "secret"
+)
+
+type ProjectEnvVar struct {
+	ID             string         `gorm:"primaryKey;type:text"`
+	ProjectID      string         `gorm:"type:text;not null;uniqueIndex:idx_project_env_key"`
+	Project        Project        `gorm:"foreignKey:ProjectID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Key            string         `gorm:"size:255;not null;uniqueIndex:idx_project_env_key"`
+	Kind           ProjectEnvKind `gorm:"type:text;not null"`
+	Value          string         `gorm:"type:text"`
+	EncryptedValue string         `gorm:"type:text"`
+	KeyVersion     int            `gorm:"not null;default:1"`
+	CreatedAt      time.Time      `gorm:"not null;autoCreateTime"`
+	UpdatedAt      time.Time      `gorm:"not null;autoUpdateTime"`
+}
+
+func (e *ProjectEnvVar) BeforeCreate(tx *gorm.DB) (err error) {
+	if e.ID == "" {
+		e.ID = uuid.NewString()
+	}
+	return
+}
+
+func (k ProjectEnvKind) Valid() bool {
+	return k == ProjectEnvKindPlain || k == ProjectEnvKindSecret
+}
+
 func (s Status) Valid() bool {
 	return s == StatusStarting ||
 		s == StatusRunning ||

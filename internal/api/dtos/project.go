@@ -38,6 +38,30 @@ type ListProjectsResponse struct {
 	Items []ProjectResponse `json:"items"`
 }
 
+type ProjectEnvKind string
+
+const (
+	ProjectEnvKindPlain  ProjectEnvKind = "plain"
+	ProjectEnvKindSecret ProjectEnvKind = "secret"
+)
+
+type UpsertProjectEnvRequest struct {
+	Kind  ProjectEnvKind `json:"kind" validate:"required,oneof=plain secret"`
+	Value string         `json:"value"`
+}
+
+type ProjectEnvVarResponse struct {
+	Key       string         `json:"key"`
+	Kind      ProjectEnvKind `json:"kind"`
+	Value     *string        `json:"value"`
+	HasValue  bool           `json:"has_value"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+type ListProjectEnvResponse struct {
+	Items []ProjectEnvVarResponse `json:"items"`
+}
+
 // ProjectRuntimeStatsResponse is the public response for recent per-project runtime stats.
 type ProjectRuntimeStatsResponse struct {
 	// AsOf is when the backend assembled this stats response.

@@ -2,11 +2,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { computed } from 'vue'
 
 import {
+  deleteProjectEnv,
   deleteProject,
   getProjectStats,
+  listProjectEnv,
   listProjects,
   startProject,
   stopProject,
+  upsertProjectEnv,
   updateProjectRuntimeSettings,
 } from '~/features/projects/api'
 import type { Project, ProjectDisplayStatus, ProjectStats } from '~/features/projects/types'
@@ -33,6 +36,14 @@ export function useProjectStats() {
     refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
     retry: 1,
+  })
+}
+
+export function useProjectEnv(projectID: string) {
+  return useQuery({
+    queryKey: projectKeys.env(projectID),
+    queryFn: () => listProjectEnv(projectID),
+    staleTime: 3_000,
   })
 }
 
@@ -103,6 +114,28 @@ export function useUpdateProjectRuntimeSettings() {
   return useMutation({
     mutationFn: updateProjectRuntimeSettings,
     onSuccess: () => invalidateProjectList(queryClient),
+  })
+}
+
+export function useUpsertProjectEnv(projectID: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: upsertProjectEnv,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: projectKeys.env(projectID) })
+    },
+  })
+}
+
+export function useDeleteProjectEnv(projectID: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteProjectEnv,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: projectKeys.env(projectID) })
+    },
   })
 }
 

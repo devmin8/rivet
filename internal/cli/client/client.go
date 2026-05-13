@@ -162,9 +162,18 @@ func (c *Client) DeployProject(ctx context.Context, session *Session, projectID 
 	return &res, nil
 }
 
+func (c *Client) UpsertProjectEnv(ctx context.Context, session *Session, projectID string, key string, req dtos.UpsertProjectEnvRequest) error {
+	var res dtos.ProjectEnvVarResponse
+	return c.put(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/env/"+url.PathEscape(key), session, req, http.StatusOK, &res)
+}
+
 func (c *Client) post(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
 	_, err := c.postWithCookies(ctx, path, session, body, wantStatus, dest)
 	return err
+}
+
+func (c *Client) put(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
+	return c.requestJSON(ctx, http.MethodPut, path, session, body, wantStatus, dest)
 }
 
 func (c *Client) get(ctx context.Context, path string, session *Session, wantStatus int, dest any) error {
@@ -198,6 +207,16 @@ func (c *Client) getWithCookies(ctx context.Context, path string, session *Sessi
 }
 
 func (c *Client) postWithCookies(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) ([]*http.Cookie, error) {
+	cookies, err := c.requestJSONWithCookies(ctx, http.MethodPost, path, session, body, wantStatus, dest)
+	return cookies, err
+}
+
+func (c *Client) requestJSON(ctx context.Context, method string, path string, session *Session, body any, wantStatus int, dest any) error {
+	_, err := c.requestJSONWithCookies(ctx, method, path, session, body, wantStatus, dest)
+	return err
+}
+
+func (c *Client) requestJSONWithCookies(ctx context.Context, method string, path string, session *Session, body any, wantStatus int, dest any) ([]*http.Cookie, error) {
 	if err := requireCSRFToken(session); err != nil {
 		return nil, err
 	}
@@ -207,7 +226,7 @@ func (c *Client) postWithCookies(ctx context.Context, path string, session *Sess
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}

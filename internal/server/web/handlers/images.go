@@ -115,6 +115,12 @@ func projectError(c fiber.Ctx, err error, message string) error {
 			Message: "Auto sleep duration must be disabled or at least 60000 ms.",
 		})
 	}
+	if errors.Is(err, services.ErrMissingSecretKey) || errors.Is(err, services.ErrInvalidSecretKey) {
+		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
+			Error:   "secret_key_unavailable",
+			Message: "RIVET_SECRET_KEY must be configured before saving or starting projects with secrets.",
+		})
+	}
 	if errors.Is(err, io.ErrUnexpectedEOF) {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_request",

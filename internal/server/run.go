@@ -70,7 +70,7 @@ func (s *App) Run() error {
 	activity.Start(ctx)
 
 	// reconciler to manage the deployment of projects
-	reconciler := services.NewReconciler(s.db, s.docker, s.routes, s.log)
+	reconciler := services.NewReconciler(s.db, s.docker, s.routes, s.cfg.SecretKey, s.log)
 	reconciler.Start(ctx)
 
 	app.Hooks().OnListen(func(data fiber.ListenData) error {

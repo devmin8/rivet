@@ -6,4 +6,5 @@ export const projectKeys = {
   all: ['projects'] as const,
   activeProjects: ['projects', 'active'] as const,
   runtimeStats: ['projects', 'runtime-stats'] as const,
+  env: (projectID: string) => ['projects', projectID, 'env'] as const,
 }

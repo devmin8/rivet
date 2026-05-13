@@ -28,6 +28,7 @@ type ProjectService struct {
 	db     *gorm.DB
 	docker *docker.Client
 	log    *slog.Logger
+	env    *ProjectEnvService
 
 	// lifecycleMu serializes project lifecycle actions while start/stop/deploy run synchronously.
 	lifecycleMu sync.Mutex
@@ -50,15 +51,16 @@ type UpdateProjectRuntimeSettingsRequest struct {
 	AutoSleepAfterMS *int64
 }
 
-func NewProjectService(db *gorm.DB, docker *docker.Client) *ProjectService {
-	return NewProjectServiceWithLogger(db, docker, nil)
+func NewProjectService(db *gorm.DB, docker *docker.Client, secretKey []byte) *ProjectService {
+	return NewProjectServiceWithLogger(db, docker, secretKey, nil)
 }
 
-func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, log *slog.Logger) *ProjectService {
+func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, secretKey []byte, log *slog.Logger) *ProjectService {
 	return &ProjectService{
 		db:         db,
 		docker:     docker,
 		log:        log,
+		env:        NewProjectEnvService(db, secretKey),
 		statsCache: make(map[string]projectRuntimeStatsCacheEntry),
 	}
 }
@@ -205,7 +207,12 @@ func (s *ProjectService) StartProject(ctx context.Context, id string, userID str
 		return nil, s.markRuntimeFailed(project.ID, "", err)
 	}
 
-	containerID, err := s.docker.StartContainer(ctx, project.ContainerName, project.ID, image)
+	env, err := s.env.RuntimeEnv(project.ID)
+	if err != nil {
+		return nil, s.markRuntimeFailed(project.ID, "", err)
+	}
+
+	containerID, err := s.docker.StartContainer(ctx, project.ContainerName, project.ID, image, env)
 	if err != nil {
 		return nil, s.markRuntimeFailed(project.ID, "", err)
 	}
@@ -285,7 +292,12 @@ func (s *ProjectService) DeployProject(ctx context.Context, id string, userID st
 		return nil, s.markRuntimeFailed(project.ID, "", err)
 	}
 
-	containerID, err := s.docker.StartContainer(ctx, project.ContainerName, project.ID, project.TargetImageRef)
+	env, err := s.env.RuntimeEnv(project.ID)
+	if err != nil {
+		return nil, s.markRuntimeFailed(project.ID, "", err)
+	}
+
+	containerID, err := s.docker.StartContainer(ctx, project.ContainerName, project.ID, project.TargetImageRef, env)
 	if err != nil {
 		return nil, s.markRuntimeFailed(project.ID, "", err)
 	}

@@ -1,6 +1,9 @@
 package config
 
 import (
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -8,6 +11,8 @@ import (
 	"github.com/devmin8/rivet/internal/validation"
 	"github.com/joho/godotenv"
 )
+
+const secretKeyEnvName = "RIVET_SECRET_KEY"
 
 type AppEnv string
 
@@ -23,6 +28,7 @@ type ServerEnv struct {
 	CaddyURL           string `validate:"required,url"`
 	CaddyAccessLogPath string `validate:"required"`
 	AppEnv             AppEnv `validate:"required,oneof=dev prod"`
+	SecretKey          []byte `validate:"required,len=32"`
 }
 
 var validate = validation.New()
@@ -50,6 +56,11 @@ func getConfig() (*ServerEnv, error) {
 		return nil, err
 	}
 
+	secretKey, err := envSecretKey()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServerEnv{
 		Port:               port,
 		Domain:             env("DOMAIN"),
@@ -57,6 +68,7 @@ func getConfig() (*ServerEnv, error) {
 		CaddyURL:           envWithDefault("CADDY_URL", "http://rivet-caddy:2019"),
 		CaddyAccessLogPath: envWithDefault("CADDY_ACCESS_LOG_PATH", "/var/log/rivet-caddy/access.log"),
 		AppEnv:             AppEnv(envWithDefault("APP_ENV", "dev")),
+		SecretKey:          secretKey,
 	}, nil
 }
 
@@ -83,4 +95,21 @@ func envWithDefault(key, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+func envSecretKey() ([]byte, error) {
+	value := env(secretKeyEnvName)
+	if value == "" {
+		return nil, errors.New("RIVET_SECRET_KEY is required")
+	}
+
+	if decoded, err := base64.StdEncoding.DecodeString(value); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+
+	if decoded, err := hex.DecodeString(value); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+
+	return nil, errors.New("RIVET_SECRET_KEY must be a 64-character hex string or base64-encoded 32-byte key")
 }

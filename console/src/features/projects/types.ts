@@ -8,6 +8,7 @@ export type ProjectStatus =
   | 'failed'
 export type ProjectDisplayStatus = ProjectStatus
 export type ProjectAction = 'start' | 'stop' | 'delete' | 'runtime-settings'
+export type ProjectEnvKind = 'plain' | 'secret'
 
 export interface Project {
   id: string
@@ -31,6 +32,30 @@ export interface Project {
 
 export interface ProjectListResponse {
   items: Project[]
+}
+
+export interface ProjectEnvVar {
+  key: string
+  kind: ProjectEnvKind
+  value: string | null
+  has_value: boolean
+  updated_at: string
+}
+
+export interface ProjectEnvResponse {
+  items: ProjectEnvVar[]
+}
+
+export interface UpsertProjectEnvInput {
+  projectID: string
+  key: string
+  kind: ProjectEnvKind
+  value: string
+}
+
+export interface DeleteProjectEnvInput {
+  projectID: string
+  key: string
 }
 
 export interface ProjectStatsResponse {

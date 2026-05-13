@@ -14,6 +14,7 @@ import (
 	"github.com/devmin8/rivet/internal/cli/client"
 	"github.com/devmin8/rivet/internal/cli/prompt"
 	"github.com/devmin8/rivet/internal/docker"
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +61,7 @@ func newShipCmd(app *app) *cobra.Command {
 
 				fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s created successfully.\n", project.ID)
 
-				return buildAndUploadImage(ctx, cmd, app, session, project.ID, project.Platform)
+				return shipProject(ctx, cmd, app, session, project.ID, project.Platform)
 			case "2", "existing", "e":
 				id, err := prompt.RequiredString(cmd.InOrStdin(), cmd.OutOrStdout(), "Project ID: ")
 				if err != nil {
@@ -78,7 +79,7 @@ func newShipCmd(app *app) *cobra.Command {
 				fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s selected.\n", project.ID)
 				fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", project.Platform)
 
-				return buildAndUploadImage(ctx, cmd, app, session, project.ID, project.Platform)
+				return shipProject(ctx, cmd, app, session, project.ID, project.Platform)
 			default:
 				return errors.New("project must be new or existing")
 			}
@@ -120,11 +121,13 @@ func promptCreateProject(cmd *cobra.Command, platform string) (dtos.CreateProjec
 	}, nil
 }
 
-func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, session *client.Session, projectID string, platform string) error {
+func shipProject(ctx context.Context, cmd *cobra.Command, app *app, session *client.Session, projectID string, platform string) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
+
+	envImportErr := importDotenv(ctx, cmd, app.apiClient(), session, dir, projectID)
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Building image for %s...\n", platform)
 	result, err := docker.BuildImage(ctx, projectID, platform, dir, cmd.OutOrStdout())
@@ -146,6 +149,12 @@ func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, sess
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Image %s uploaded successfully.\n", result.ImageTag)
+	if envImportErr != nil {
+		fmt.Fprintln(cmd.OutOrStdout(), "Env import failed, so deploy was skipped.")
+		fmt.Fprintln(cmd.OutOrStdout(), "Update env/secrets in the Console, then deploy or start the project.")
+		return nil
+	}
+
 	fmt.Fprintln(cmd.OutOrStdout(), "Deploying project...")
 	project, err := client.DeployProject(ctx, session, projectID)
 	if err != nil {
@@ -154,6 +163,57 @@ func buildAndUploadImage(ctx context.Context, cmd *cobra.Command, app *app, sess
 
 	fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s deployed successfully.\n", project.ID)
 	return nil
+}
+
+func importDotenv(ctx context.Context, cmd *cobra.Command, apiClient *client.Client, session *client.Session, dir string, projectID string) error {
+	envPath := dir + string(os.PathSeparator) + ".env"
+	if _, err := os.Stat(envPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: unable to inspect .env: %v\n", err)
+		return err
+	}
+
+	values, err := godotenv.Read(envPath)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: unable to parse .env: %v\n", err)
+		return err
+	}
+	if len(values) == 0 {
+		return nil
+	}
+
+	imported := 0
+	for key, value := range values {
+		kind := dtos.ProjectEnvKindPlain
+		runtimeKey := key
+		if strings.HasPrefix(key, "RIVET_SECRET_") {
+			kind = dtos.ProjectEnvKindSecret
+			runtimeKey = strings.TrimPrefix(key, "RIVET_SECRET_")
+		}
+
+		err := apiClient.UpsertProjectEnv(ctx, session, projectID, runtimeKey, dtos.UpsertProjectEnvRequest{
+			Kind:  kind,
+			Value: value,
+		})
+		if err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Warning: unable to import .env runtime values: %v\n", err)
+			return err
+		}
+
+		imported++
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Imported %d runtime env %s from .env.\n", imported, pluralize(imported, "value", "values"))
+	return nil
+}
+
+func pluralize(count int, singular string, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
 }
 
 func normalizePlatform(platform string) (string, error) {

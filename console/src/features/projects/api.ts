@@ -1,5 +1,13 @@
 import { http } from '~/lib/http'
-import type { Project, ProjectListResponse, ProjectStatsResponse } from '~/features/projects/types'
+import type {
+  DeleteProjectEnvInput,
+  Project,
+  ProjectEnvVar,
+  ProjectEnvResponse,
+  ProjectListResponse,
+  ProjectStatsResponse,
+  UpsertProjectEnvInput,
+} from '~/features/projects/types'
 
 export interface UpdateProjectRuntimeSettingsInput {
   projectID: string
@@ -12,6 +20,34 @@ export function listProjects(): Promise<ProjectListResponse> {
 
 export function getProjectStats(): Promise<ProjectStatsResponse> {
   return http<ProjectStatsResponse>('/projects/stats')
+}
+
+export function listProjectEnv(projectID: string): Promise<ProjectEnvResponse> {
+  return http<ProjectEnvResponse>(`/projects/${encodeURIComponent(projectID)}/env`)
+}
+
+export function upsertProjectEnv({
+  projectID,
+  key,
+  kind,
+  value,
+}: UpsertProjectEnvInput): Promise<ProjectEnvVar> {
+  return http<ProjectEnvVar>(
+    `/projects/${encodeURIComponent(projectID)}/env/${encodeURIComponent(key)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ kind, value }),
+    },
+  )
+}
+
+export function deleteProjectEnv({ projectID, key }: DeleteProjectEnvInput): Promise<void> {
+  return http<void>(
+    `/projects/${encodeURIComponent(projectID)}/env/${encodeURIComponent(key)}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
 export function startProject(projectID: string): Promise<Project> {

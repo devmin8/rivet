@@ -27,6 +27,9 @@ Usage:
 Environment variables:
   🌐 RIVET_DOMAIN        Public domain for the Rivet server.
                       Required.
+  🔑 RIVET_SECRET_KEY    Secret key used to encrypt project secrets.
+                      Required. Must be a 64-character hex string or
+                      base64-encoded 32-byte key.
   📦 RIVET_HOME          Persistent state directory.
                       Default: \$HOME/.rivet
   🐳 RIVET_SERVER_IMAGE  Server image to pull.
@@ -89,6 +92,47 @@ prompt_required() {
 	export "$var_name=$current_value"
 }
 
+prompt_secret_required() {
+	var_name=$1
+	label=$2
+
+	eval current_value=\${$var_name:-}
+	if [ -n "$current_value" ]; then
+		return
+	fi
+
+	while [ -z "$current_value" ]; do
+		printf '%s: ' "$label" >/dev/tty
+		old_tty_settings=$(stty -g </dev/tty)
+		stty -echo </dev/tty
+		IFS= read -r current_value </dev/tty || current_value=
+		stty "$old_tty_settings" </dev/tty
+		printf '\n' >/dev/tty
+	done
+
+	export "$var_name=$current_value"
+}
+
+is_hex_secret_key() {
+	[ ${#1} -eq 64 ] && printf '%s' "$1" | grep -Eq '^[0-9A-Fa-f]{64}$'
+}
+
+is_base64_secret_key() {
+	command -v openssl >/dev/null 2>&1 || return 1
+	decoded_len=$(
+		printf '%s' "$1" | openssl enc -base64 -d -A 2>/dev/null | wc -c | tr -d ' '
+	)
+	[ "$decoded_len" = "32" ]
+}
+
+validate_secret_key() {
+	if is_hex_secret_key "$RIVET_SECRET_KEY" || is_base64_secret_key "$RIVET_SECRET_KEY"; then
+		return
+	fi
+
+	fail "RIVET_SECRET_KEY must be a 64-character hex string or base64-encoded 32-byte key"
+}
+
 prompt_bool() {
 	var_name=$1
 	label=$2
@@ -130,6 +174,7 @@ guided_setup() {
 	log ""
 
 	prompt_required RIVET_DOMAIN "🌐 Domain"
+	prompt_secret_required RIVET_SECRET_KEY "🔑 Secret key"
 	prompt_value RIVET_HOME "📦 Persistent state directory" "$HOME/.rivet"
 	prompt_value RIVET_SERVER_IMAGE "🐳 Server image" "ghcr.io/devmin8/rivet-server:latest"
 	prompt_value RIVET_CONSOLE_IMAGE "🖥️  Console image" "ghcr.io/devmin8/rivet-console:latest"
@@ -147,6 +192,7 @@ setup_configuration() {
 	# Rivet config
 	RIVET_HOME=${RIVET_HOME:-"$HOME/.rivet"}
 	RIVET_DOMAIN=${RIVET_DOMAIN:-}
+	RIVET_SECRET_KEY=${RIVET_SECRET_KEY:-}
 	RIVET_SERVER_DATA_DIR="$RIVET_HOME/server/data"
 	RIVET_NETWORK_NAME=${RIVET_NETWORK_NAME:-"rivet-network"}
 	RIVET_DOCKER_SOCK=${RIVET_DOCKER_SOCK:-"/var/run/docker.sock"}
@@ -167,6 +213,8 @@ setup_configuration() {
 
 ensure_host() {
 	[ -n "$RIVET_DOMAIN" ] || fail "RIVET_DOMAIN is required, for example: RIVET_DOMAIN=rivet.example.com ./scripts/install.sh"
+	[ -n "$RIVET_SECRET_KEY" ] || fail "RIVET_SECRET_KEY is required, for example: RIVET_SECRET_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n') ./scripts/install.sh"
+	validate_secret_key
 	[ -S "$RIVET_DOCKER_SOCK" ] || fail "Docker socket not found at $RIVET_DOCKER_SOCK"
 }
 
@@ -222,6 +270,7 @@ start_rivet_server() {
 		-e PORT=3000 \
 		-e DOMAIN="$RIVET_DOMAIN" \
 		-e APP_ENV="$APP_ENV" \
+		-e RIVET_SECRET_KEY="$RIVET_SECRET_KEY" \
 		-e DB_PATH=/data/rivet.db \
 		-e CADDY_ACCESS_LOG_PATH=/var/log/rivet-caddy/access.log \
 		-v "$RIVET_SERVER_DATA_DIR:/data" \
