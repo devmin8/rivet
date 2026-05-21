@@ -9,8 +9,9 @@
     "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
     "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .oxlint*, oxlint*, .oxfmt*, .prettier*, prettier*, .editorconfig",
     "go.mod": "go.sum, Makefile",
-    "Dockerfile": ".dockerignore",
-    ".gitignore": ".gitattributes"
+    "Dockerfile": ".dockerignore, docker-compose.yml,Caddyfile",
+    ".gitignore": ".gitattributes",
+    "README.md": "AGENTS.md"
   },
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit"
