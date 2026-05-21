@@ -4,19 +4,27 @@ import { getCurrentUser } from '~/features/auth/api'
 import { ApiError } from '~/lib/errors'
 import { queryClient } from '~/lib/query-client'
 import { authKeys } from '~/lib/query-keys'
-import Dashboard from '~/routes/dashboard.vue'
-import SignIn from '~/routes/sign-in.vue'
+
+const ConsoleLayout = () => import('~/layouts/console-layout.vue')
+const Dashboard = () => import('~/routes/dashboard.vue')
+const SignIn = () => import('~/routes/sign-in.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'dashboard',
-      component: Dashboard,
+      component: ConsoleLayout,
       meta: {
         requiresAuth: true,
       },
+      children: [
+        {
+          path: '',
+          name: 'projects',
+          component: Dashboard,
+        },
+      ],
     },
     {
       path: '/signin',

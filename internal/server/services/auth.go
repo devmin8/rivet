@@ -170,6 +170,14 @@ func (s *AuthService) UserFromSessionToken(token string) (*database.User, error)
 	return &user, nil
 }
 
+func (s *AuthService) SignOutSessionToken(token string) error {
+	if strings.TrimSpace(token) == "" {
+		return nil
+	}
+
+	return s.db.Delete(&database.Session{}, "id = ?", sessionIDFromToken(token)).Error
+}
+
 const (
 	argon2Memory  = 19 * 1024
 	argon2Time    = 2

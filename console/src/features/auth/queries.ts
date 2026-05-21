@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { getCurrentUser, signIn } from '~/features/auth/api'
+import { getCurrentUser, signIn, signOut } from '~/features/auth/api'
 import { authKeys } from '~/lib/query-keys'
 
 export function useCurrentUser() {
@@ -18,6 +18,17 @@ export function useSignIn() {
     mutationFn: signIn,
     onSuccess: (user) => {
       queryClient.setQueryData(authKeys.currentUser, user)
+    },
+  })
+}
+
+export function useSignOut() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: signOut,
+    onSettled: () => {
+      queryClient.clear()
     },
   })
 }

@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreHorizontal, Play, Square, Trash2, TimerReset } from 'lucide-vue-next'
+import {
+  LoaderCircle,
+  MoreHorizontal,
+  Play,
+  SlidersHorizontal,
+  Square,
+  Trash2,
+  TimerReset,
+} from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import type { ProjectAction, ProjectDisplayStatus } from '~/features/projects/types'
@@ -15,6 +23,7 @@ const emit = defineEmits<{
   start: []
   stop: []
   delete: []
+  manageEnvironment: []
   updateAutoSleep: [autoSleepAfterMS: number | null]
 }>()
 
@@ -56,27 +65,43 @@ function isActionPending() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-end gap-2">
+  <div class="flex flex-nowrap items-center justify-end gap-1.5">
     <Button
       type="button"
       size="sm"
-      :variant="isRunning ? 'outline' : 'default'"
+      variant="secondary"
+      :class="
+        isRunning
+          ? 'text-xs text-foreground'
+          : 'text-xs'
+      "
       :disabled="disableActions"
       @click="isRunning ? emit('stop') : emit('start')"
     >
-      <LoaderCircle v-if="isActionPending()" class="size-4 animate-spin" aria-hidden="true" />
-      <Square v-else-if="isRunning" class="size-4" aria-hidden="true" />
-      <Play v-else class="size-4" aria-hidden="true" />
+      <LoaderCircle v-if="isActionPending()" class="size-3 animate-spin" aria-hidden="true" />
+      <Square v-else-if="isRunning" class="size-3" aria-hidden="true" />
+      <Play v-else class="size-3" aria-hidden="true" />
       {{ actionLabel() }}
     </Button>
 
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="Project actions">
-          <MoreHorizontal class="size-4" aria-hidden="true" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          class="size-8 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="More project actions"
+          title="More project actions"
+        >
+          <MoreHorizontal class="size-3.5" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem @click="emit('manageEnvironment')">
+          <SlidersHorizontal class="size-4" aria-hidden="true" />
+          Runtime environment
+        </DropdownMenuItem>
         <DropdownMenuItem
           :disabled="disableActions"
           @click="emit('updateAutoSleep', autoSleepEnabled ? null : 60_000)"

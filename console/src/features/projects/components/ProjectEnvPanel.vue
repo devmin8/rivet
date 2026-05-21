@@ -194,7 +194,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               :disabled="deleteEnv.isPending.value"
               :title="`Delete ${item.key}`"
               @click="removeItem(item.key)"
@@ -309,10 +309,10 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
           <Button type="submit" :disabled="upsertEnv.isPending.value">
             <Loader2
               v-if="upsertEnv.isPending.value"
-              class="mr-2 size-4 animate-spin"
+              class="size-4 animate-spin"
               aria-hidden="true"
             />
-            <Plus v-else class="mr-2 size-4" aria-hidden="true" />
+            <Plus v-else class="size-4" aria-hidden="true" />
             {{ submitLabel }}
           </Button>
         </div>

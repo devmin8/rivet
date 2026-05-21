@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from '@tanstack/vue-form'
-import { Eye, EyeOff, LoaderCircle, LogIn } from 'lucide-vue-next'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
@@ -63,10 +63,10 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
 
 <template>
   <form class="flex flex-col gap-5" autocomplete="on" @submit.prevent="form.handleSubmit">
-    <FieldGroup class="space-y-5">
+    <FieldGroup class="gap-4">
       <form.Field name="username">
         <template #default="{ field }">
-          <Field :data-invalid="isInvalid(field)">
+          <Field class="gap-2" :data-invalid="isInvalid(field)">
             <FieldLabel :for="field.name">Username</FieldLabel>
 
             <Input
@@ -95,7 +95,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
 
       <form.Field name="password">
         <template #default="{ field }">
-          <Field :data-invalid="isInvalid(field)">
+          <Field class="gap-2" :data-invalid="isInvalid(field)">
             <FieldLabel :for="field.name">Password</FieldLabel>
 
             <div class="relative">
@@ -143,16 +143,19 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
       </AlertDescription>
     </Alert>
 
-    <Button type="submit" size="lg" class="w-full" :disabled="signInMutation.isPending.value">
+    <Button
+      type="submit"
+      size="sm"
+      class="w-full"
+      :disabled="signInMutation.isPending.value"
+    >
       <LoaderCircle
         v-if="signInMutation.isPending.value"
         class="size-4 animate-spin"
         aria-hidden="true"
       />
 
-      <LogIn v-else class="size-4" aria-hidden="true" />
-
-      Sign in
+      Login
     </Button>
   </form>
 </template>

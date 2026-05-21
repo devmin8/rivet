@@ -7,7 +7,7 @@ import vueDevTools from "vite-plugin-vue-devtools";
 import Components from "unplugin-vue-components/vite";
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     Components({
       dirs: ["src/components"],
@@ -15,7 +15,7 @@ export default defineConfig({
     }),
     vue(),
     tailwindcss(),
-    vueDevTools(),
+    mode === "development" && vueDevTools(),
   ],
   server: {
     proxy: {
@@ -30,4 +30,4 @@ export default defineConfig({
       "~": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-});
+}));

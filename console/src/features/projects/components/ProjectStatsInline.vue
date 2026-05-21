@@ -11,19 +11,7 @@ const props = defineProps<{
 }>()
 
 const emptyStatsLabel = computed(() => {
-  if (props.status === 'deploying') {
-    return 'Stats pending'
-  }
-
-  if (props.status === 'starting' || props.status === 'waking') {
-    return 'Stats pending'
-  }
-
-  if (props.status === 'running' || props.status === 'failed') {
-    return 'Stats unavailable'
-  }
-
-  return 'No live stats'
+  return '-'
 })
 
 const statsTitle = computed(() => {
@@ -85,48 +73,49 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
 
 <template>
   <div
-    class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-[4rem_minmax(7.5rem,8rem)_minmax(6.5rem,1fr)] lg:gap-4"
+    class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground"
     :title="statsTitle"
   >
     <template v-if="stats">
-      <div class="min-w-0">
-        <p class="text-muted-foreground inline-flex items-center gap-1 text-xs">
+      <div class="inline-flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+        <span class="inline-flex items-center gap-1 text-[11px] uppercase leading-5 tracking-wide">
           CPU
           <TriangleAlert
             v-if="stats.stale"
             class="size-3.5 text-amber-600 dark:text-amber-300"
             aria-label="Stale stats"
           />
-        </p>
-        <p class="font-medium">{{ formatCPU(stats.cpu_percent) }}</p>
+        </span>
+        <span class="text-[13px] leading-5 text-foreground">
+          {{ formatCPU(stats.cpu_percent) }}
+        </span>
       </div>
 
-      <div class="min-w-0">
-        <p class="text-muted-foreground text-xs">Memory</p>
-        <p class="truncate text-sm font-medium">
+      <div class="inline-flex min-w-0 items-baseline gap-2">
+        <span class="text-[11px] uppercase leading-5 tracking-wide">Memory</span>
+        <span class="truncate text-[13px] leading-5 text-foreground">
           {{ formatBinaryBytes(stats.memory_usage_bytes) }} /
           {{ formatBinaryBytes(stats.memory_limit_bytes) }}
-        </p>
-        <p class="text-muted-foreground text-xs">{{ formatCPU(stats.memory_percent) }}</p>
+        </span>
       </div>
 
-      <div class="col-span-2 min-w-0 sm:col-span-1">
-        <p class="text-muted-foreground text-xs">Network</p>
-        <p class="truncate text-sm font-medium">
-          ↓ {{ formatNetworkBytes(stats.network_rx_bytes) }} ↑
+      <div class="inline-flex min-w-0 items-baseline gap-2">
+        <span class="text-[11px] uppercase leading-5 tracking-wide">Network</span>
+        <span class="truncate text-[13px] leading-5 text-foreground">
+          ↓ {{ formatNetworkBytes(stats.network_rx_bytes) }} · ↑
           {{ formatNetworkBytes(stats.network_tx_bytes) }}
-        </p>
+        </span>
       </div>
     </template>
 
     <template v-else-if="isLoading">
-      <div v-for="index in 3" :key="index" class="min-w-0 space-y-2">
-        <div class="bg-muted h-3 w-12 rounded" />
-        <div class="bg-muted h-4 w-20 rounded" />
+      <div v-for="index in 3" :key="index" class="inline-flex items-center gap-1.5">
+        <div class="h-3 w-10 rounded bg-muted" />
+        <div class="h-3 w-16 rounded bg-muted" />
       </div>
     </template>
 
-    <p v-else class="text-muted-foreground col-span-2 text-sm sm:col-span-3">
+    <p v-else class="text-[13px] leading-5 text-muted-foreground">
       {{ emptyStatsLabel }}
     </p>
   </div>

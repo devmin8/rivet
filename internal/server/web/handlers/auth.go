@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/devmin8/rivet/internal/api"
 	"github.com/devmin8/rivet/internal/api/dtos"
@@ -127,6 +128,20 @@ func (h *AuthHandler) CurrentUser(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(mapper.ToCurrentUserResponse(userID, csrfToken))
 }
 
+func (h *AuthHandler) SignOutUser(c fiber.Ctx) error {
+	if err := h.authService.SignOutSessionToken(c.Cookies(api.SessionCookieName)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
+			Error:   "internal_error",
+			Message: "Unable to sign out.",
+		})
+	}
+
+	clearAuthCookie(c, api.SessionCookieName, true)
+	clearAuthCookie(c, api.CSRFCookieName, false)
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 func setCSRFCookie(c fiber.Ctx, token string) {
 	c.Cookie(&fiber.Cookie{
 		Name:        api.CSRFCookieName,
@@ -136,6 +151,18 @@ func setCSRFCookie(c fiber.Ctx, token string) {
 		HTTPOnly:    false,
 		SameSite:    fiber.CookieSameSiteStrictMode,
 		SessionOnly: true,
+	})
+}
+
+func clearAuthCookie(c fiber.Ctx, name string, httpOnly bool) {
+	c.Cookie(&fiber.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		Secure:   true,
+		HTTPOnly: httpOnly,
+		SameSite: fiber.CookieSameSiteStrictMode,
+		Expires:  time.Now().Add(-time.Hour),
 	})
 }
 

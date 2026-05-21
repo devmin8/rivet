@@ -36,6 +36,7 @@ func registerRoutes(app *fiber.App, webCtx *WebContext) *fiber.App {
 	v1.Use(middlewares.RequireCSRF())
 
 	v1.Get("/auth/me", authHandler.CurrentUser)
+	v1.Post("/auth/signout", authHandler.SignOutUser)
 
 	projectHandler := handlers.NewProjectHandler(projectService, webCtx.routes, webCtx.log)
 	projectEnvHandler := handlers.NewProjectEnvHandler(services.NewProjectEnvService(webCtx.db, webCtx.cfg.SecretKey))
