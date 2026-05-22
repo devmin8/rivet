@@ -18,6 +18,7 @@ var ErrProjectNotFound = errors.New("project not found")
 var ErrProjectInactive = errors.New("project is not active")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
 var ErrNoTargetImage = errors.New("project has no target image")
+var ErrImageRequiredToStart = errors.New("image reference is required to start project")
 var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be at least 60000 ms")
 var ErrProjectStateChanged = errors.New("project runtime state changed")
 
@@ -44,6 +45,8 @@ type CreateProjectRequest struct {
 	Description string
 	Port        uint32
 	Platform    string
+	ImageRef    string
+	Start       bool
 	CreatedByID string
 }
 
@@ -65,15 +68,21 @@ func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, secretKey [
 	}
 }
 
-func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Project, error) {
+func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectRequest) (*database.Project, error) {
 	// todo: get it from the cli, so cli needs to be updated
 	autoSleepAfterMS := defaultAutoSleepAfterMS
+	imageRef := strings.TrimSpace(req.ImageRef)
+	if req.Start && imageRef == "" {
+		return nil, ErrImageRequiredToStart
+	}
+
 	project := &database.Project{
 		Name:             strings.TrimSpace(req.Name),
-		Domain:           strings.TrimSpace(req.Domain),
+		Domain:           NormalizeProjectHost(req.Domain),
 		Description:      strings.TrimSpace(req.Description),
 		Port:             strconv.FormatUint(uint64(req.Port), 10),
 		Platform:         normalizePlatform(req.Platform),
+		TargetImageRef:   imageRef,
 		Status:           database.StatusStopped,
 		AutoSleepAfterMS: &autoSleepAfterMS,
 		CreatedByID:      req.CreatedByID,
@@ -84,7 +93,14 @@ func (s *ProjectService) CreateProject(req CreateProjectRequest) (*database.Proj
 		return nil, err
 	}
 
-	return project, nil
+	if !req.Start {
+		return project, nil
+	}
+
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+
+	return s.startProject(ctx, project, req.CreatedByID)
 }
 
 func (s *ProjectService) ListProjects(userID string, includeDeleted bool) ([]database.Project, error) {
@@ -202,7 +218,23 @@ func (s *ProjectService) StartProject(ctx context.Context, id string, userID str
 		return project, nil
 	}
 
+	return s.startProject(ctx, project, userID)
+}
+
+func (s *ProjectService) startProject(ctx context.Context, project *database.Project, userID string) (*database.Project, error) {
+	image := strings.TrimSpace(project.TargetImageRef)
+	if image == "" {
+		image = strings.TrimSpace(project.CurrentImageRef)
+	}
+	if image == "" {
+		return nil, ErrNoTargetImage
+	}
+
 	s.clearRuntimeStatsCache(project.ID)
+	if err := s.docker.EnsureImage(ctx, image); err != nil {
+		return nil, s.markRuntimeFailed(project.ID, "", err)
+	}
+
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return nil, s.markRuntimeFailed(project.ID, "", err)
 	}

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { computed } from 'vue'
 
 import {
+  createProject,
   deleteProjectEnv,
   deleteProject,
   getProjectStats,
@@ -36,6 +37,15 @@ export function useProjectStats() {
     refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
     retry: 1,
+  })
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createProject,
+    onSuccess: () => invalidateProjectList(queryClient),
   })
 }
 

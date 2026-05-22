@@ -99,6 +99,31 @@ func (c *Client) InspectImageID(ctx context.Context, tag string) (string, error)
 	return image.ID, nil
 }
 
+// EnsureImage pulls a public image when it is not already available locally.
+func (c *Client) EnsureImage(ctx context.Context, image string) error {
+	if err := c.CheckRunning(ctx); err != nil {
+		return err
+	}
+
+	if _, err := c.api.ImageInspect(ctx, image); err == nil {
+		return nil
+	} else if !cerrdefs.IsNotFound(err) {
+		return fmt.Errorf("inspect docker image: %w", err)
+	}
+
+	res, err := c.api.ImagePull(ctx, image, dockerclient.ImagePullOptions{})
+	if err != nil {
+		return fmt.Errorf("pull docker image: %w", err)
+	}
+	defer res.Close()
+
+	if _, err := io.Copy(io.Discard, res); err != nil {
+		return fmt.Errorf("read docker image pull response: %w", err)
+	}
+
+	return nil
+}
+
 // TagImage adds a new tag to an existing local Docker image.
 func (c *Client) TagImage(ctx context.Context, source string, target string) error {
 	if err := c.CheckRunning(ctx); err != nil {

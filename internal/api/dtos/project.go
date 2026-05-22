@@ -8,6 +8,8 @@ type CreateProjectRequest struct {
 	Description string `json:"description" validate:"max=2048"`
 	Port        uint32 `json:"port" validate:"required,port"`
 	Platform    string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
+	ImageRef    string `json:"image_ref" validate:"omitempty,notblank,max=2048"`
+	Start       bool   `json:"start"`
 }
 
 type UpdateProjectRuntimeSettingsRequest struct {

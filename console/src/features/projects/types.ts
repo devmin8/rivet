@@ -34,6 +34,16 @@ export interface ProjectListResponse {
   items: Project[]
 }
 
+export interface CreateProjectInput {
+  name: string
+  domain: string
+  description: string
+  port: number
+  platform: 'linux/amd64' | 'linux/arm64'
+  imageRef: string
+  start: boolean
+}
+
 export interface ProjectEnvVar {
   key: string
   kind: ProjectEnvKind

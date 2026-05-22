@@ -109,6 +109,12 @@ func projectError(c fiber.Ctx, err error, message string) error {
 			Message: "Upload an image before starting or deploying.",
 		})
 	}
+	if errors.Is(err, services.ErrImageRequiredToStart) {
+		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+			Error:   "invalid_request",
+			Message: "Image reference is required to start a project.",
+		})
+	}
 	if errors.Is(err, services.ErrInvalidAutoSleepAfter) {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_auto_sleep_after",

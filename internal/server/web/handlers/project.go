@@ -52,20 +52,19 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 
 	userID, _ := requestctx.RequireUserID(c)
 
-	project, err := h.projectService.CreateProject(services.CreateProjectRequest{
+	project, err := h.projectService.CreateProject(c.Context(), services.CreateProjectRequest{
 		Name:        req.Name,
 		Domain:      req.Domain,
 		Description: req.Description,
 		Port:        req.Port,
 		Platform:    req.Platform,
+		ImageRef:    req.ImageRef,
+		Start:       req.Start,
 		CreatedByID: userID,
 	})
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
-			Error:   "internal_error",
-			Message: "Unable to create project.",
-		})
+		return projectError(c, err, "Unable to create project.")
 	}
 
 	h.syncRoutes(c.Context(), project.ID)

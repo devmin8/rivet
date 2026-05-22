@@ -249,7 +249,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
                     <Button
                       type="button"
                       class="flex-1"
-                      :variant="field.state.value === 'plain' ? 'default' : 'ghost'"
+                      :variant="field.state.value === 'plain' ? 'secondary' : 'ghost'"
                       size="sm"
                       :disabled="upsertEnv.isPending.value"
                       @blur="field.handleBlur"
@@ -260,7 +260,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
                     <Button
                       type="button"
                       class="flex-1"
-                      :variant="field.state.value === 'secret' ? 'default' : 'ghost'"
+                      :variant="field.state.value === 'secret' ? 'secondary' : 'ghost'"
                       size="sm"
                       :disabled="upsertEnv.isPending.value"
                       @blur="field.handleBlur"
@@ -302,7 +302,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
           </form.Field>
         </FieldGroup>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button v-if="editingKey !== null" type="button" variant="ghost" @click="resetForm">
             Cancel
           </Button>

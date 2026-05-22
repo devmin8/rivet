@@ -2,6 +2,7 @@
 import { Plus, Search, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
+import CreateProjectDialog from '~/features/projects/components/CreateProjectDialog.vue'
 import ProjectEmptyState from '~/features/projects/components/ProjectEmptyState.vue'
 import ProjectList from '~/features/projects/components/ProjectList.vue'
 import ProjectListSkeleton from '~/features/projects/components/ProjectListSkeleton.vue'
@@ -22,6 +23,7 @@ const deleteProject = useDeleteProject()
 const updateProjectRuntimeSettings = useUpdateProjectRuntimeSettings()
 
 const pendingActions = ref(new Map<string, ProjectAction>())
+const openCreateProjectDialog = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'running' | 'sleeping'>('all')
 
@@ -264,6 +266,7 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
         type="button"
         size="sm"
         class="bg-primary text-primary-foreground hover:bg-primary/90 md:ml-auto"
+        @click="openCreateProjectDialog = true"
       >
         <Plus class="size-4" aria-hidden="true" />
         Add Project
@@ -290,6 +293,7 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
 
     <ProjectEmptyState
       v-else-if="!projectList.isError.value && projectList.items.value.length === 0"
+      @add-project="openCreateProjectDialog = true"
     />
 
     <div v-else-if="!projectList.isError.value">
@@ -311,5 +315,7 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
         <p class="mt-3 text-sm text-muted-foreground">No projects match your filter.</p>
       </div>
     </div>
+
+    <CreateProjectDialog v-model:open="openCreateProjectDialog" />
   </section>
 </template>

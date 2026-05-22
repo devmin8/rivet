@@ -1,5 +1,6 @@
 import { http } from '~/lib/http'
 import type {
+  CreateProjectInput,
   DeleteProjectEnvInput,
   Project,
   ProjectEnvVar,
@@ -16,6 +17,21 @@ export interface UpdateProjectRuntimeSettingsInput {
 
 export function listProjects(): Promise<ProjectListResponse> {
   return http<ProjectListResponse>('/projects')
+}
+
+export function createProject(input: CreateProjectInput): Promise<Project> {
+  return http<Project>('/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name,
+      domain: input.domain,
+      description: input.description,
+      port: input.port,
+      platform: input.platform,
+      image_ref: input.imageRef,
+      start: input.start,
+    }),
+  })
 }
 
 export function getProjectStats(): Promise<ProjectStatsResponse> {
