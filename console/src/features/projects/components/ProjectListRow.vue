@@ -40,6 +40,10 @@ const imageRef = computed(() => {
   return props.item.project.current_image_ref || props.item.project.target_image_ref
 })
 
+const displayProjectId = computed(() => {
+  return `${props.item.project.id.slice(0, 6)}...`
+})
+
 const displayImage = computed(() => {
   const image = imageRef.value
 
@@ -150,10 +154,16 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
   <TableRow class="hover:bg-muted/30 dark:hover:bg-muted/20">
     <TableCell class="px-6 py-4">
       <div class="min-w-0 whitespace-normal">
-        <div class="flex min-w-0 items-center gap-2">
+        <div class="flex min-w-0 flex-col gap-0.5">
           <h2 class="truncate text-[13px] font-medium leading-6 tracking-tight">
             {{ item.project.name }}
           </h2>
+          <span
+            class="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground"
+          >
+            <span>Id: {{ displayProjectId }}</span>
+            <CopyButton :value="item.project.id" label="Copy project ID" class="-ml-0.5 size-4" />
+          </span>
         </div>
       </div>
     </TableCell>
