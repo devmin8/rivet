@@ -46,6 +46,7 @@ func newRootCmd(cfg *cliConfig) *cobra.Command {
 	rootCmd.AddCommand(newSignInCmd(app))
 	rootCmd.AddCommand(newSignUpCmd(app))
 	rootCmd.AddCommand(newShipCmd(app))
+	rootCmd.AddCommand(newDeleteCmd(app))
 
 	return rootCmd
 }

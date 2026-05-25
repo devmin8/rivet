@@ -162,6 +162,10 @@ func (c *Client) DeployProject(ctx context.Context, session *Session, projectID 
 	return &res, nil
 }
 
+func (c *Client) DeleteProject(ctx context.Context, session *Session, projectID string) error {
+	return c.delete(ctx, "/api/v1/projects/"+url.PathEscape(projectID), session, struct{}{}, http.StatusNoContent)
+}
+
 func (c *Client) UpsertProjectEnv(ctx context.Context, session *Session, projectID string, key string, req dtos.UpsertProjectEnvRequest) error {
 	var res dtos.ProjectEnvVarResponse
 	return c.put(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/env/"+url.PathEscape(key), session, req, http.StatusOK, &res)
@@ -179,6 +183,10 @@ func (c *Client) put(ctx context.Context, path string, session *Session, body an
 func (c *Client) get(ctx context.Context, path string, session *Session, wantStatus int, dest any) error {
 	_, err := c.getWithCookies(ctx, path, session, wantStatus, dest)
 	return err
+}
+
+func (c *Client) delete(ctx context.Context, path string, session *Session, body any, wantStatus int) error {
+	return c.requestJSON(ctx, http.MethodDelete, path, session, body, wantStatus, nil)
 }
 
 func (c *Client) getWithCookies(ctx context.Context, path string, session *Session, wantStatus int, dest any) ([]*http.Cookie, error) {
@@ -245,6 +253,11 @@ func (c *Client) requestJSONWithCookies(ctx context.Context, method string, path
 
 	if resp.StatusCode != wantStatus {
 		return nil, decodeError(resp)
+	}
+
+	// Some endpoints, such as project delete, return 204 No Content.
+	if dest == nil {
+		return resp.Cookies(), nil
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
