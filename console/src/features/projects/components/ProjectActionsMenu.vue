@@ -14,7 +14,6 @@ import type { ProjectAction, ProjectDisplayStatus } from '~/features/projects/ty
 
 const props = defineProps<{
   status: ProjectDisplayStatus
-  autoSleepAfterMs: number | null
   // User-triggered action currently in flight; runtime state still comes from status.
   pendingAction: ProjectAction | null
 }>()
@@ -24,7 +23,7 @@ const emit = defineEmits<{
   stop: []
   delete: []
   manageEnvironment: []
-  updateAutoSleep: [autoSleepAfterMS: number | null]
+  manageAutoSleep: []
 }>()
 
 const isConfirmingDelete = ref(false)
@@ -36,7 +35,6 @@ const activeStatusLabels: Partial<Record<ProjectDisplayStatus, string>> = {
 }
 
 const isRunning = computed(() => props.status === 'running')
-const autoSleepEnabled = computed(() => props.autoSleepAfterMs !== null)
 
 const activeStatusLabel = computed(() => activeStatusLabels[props.status] ?? '')
 
@@ -102,17 +100,14 @@ function isActionPending() {
           <SlidersHorizontal class="size-4" aria-hidden="true" />
           Runtime environment
         </DropdownMenuItem>
-        <DropdownMenuItem
-          :disabled="disableActions"
-          @click="emit('updateAutoSleep', autoSleepEnabled ? null : 60_000)"
-        >
+        <DropdownMenuItem :disabled="disableActions" @click="emit('manageAutoSleep')">
           <LoaderCircle
             v-if="isRuntimeSettingsPending"
             class="size-4 animate-spin"
             aria-hidden="true"
           />
           <TimerReset v-else class="size-4" aria-hidden="true" />
-          {{ autoSleepEnabled ? 'Disable auto sleep' : 'Enable auto sleep' }}
+          Auto sleep
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"

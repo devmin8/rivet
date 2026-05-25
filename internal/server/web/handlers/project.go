@@ -118,7 +118,7 @@ func (h *ProjectHandler) UpdateProjectRuntimeSettings(c fiber.Ctx) error {
 	if err := c.Bind().Body(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_request",
-			Message: "Auto sleep duration must be disabled or at least 60000 ms.",
+			Message: "Auto sleep duration must be disabled or at least 60 seconds.",
 		})
 	}
 

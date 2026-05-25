@@ -19,11 +19,11 @@ var ErrProjectInactive = errors.New("project is not active")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
 var ErrNoTargetImage = errors.New("project has no target image")
 var ErrImageRequiredToStart = errors.New("image reference is required to start project")
-var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be at least 60000 ms")
+var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be disabled or at least 60 seconds")
 var ErrProjectStateChanged = errors.New("project runtime state changed")
 
-const defaultAutoSleepAfterMS int64 = 60_000 // 1 minute
-const minAutoSleepAfterMS int64 = 60_000     // 1 minute
+const defaultAutoSleepAfter = time.Minute
+const minAutoSleepAfter = time.Minute
 
 type ProjectService struct {
 	db     *gorm.DB
@@ -69,8 +69,7 @@ func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, secretKey [
 }
 
 func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectRequest) (*database.Project, error) {
-	// todo: get it from the cli, so cli needs to be updated
-	autoSleepAfterMS := defaultAutoSleepAfterMS
+	autoSleepAfterMS := defaultAutoSleepAfter.Milliseconds()
 	imageRef := strings.TrimSpace(req.ImageRef)
 	if req.Start && imageRef == "" {
 		return nil, ErrImageRequiredToStart
@@ -161,7 +160,7 @@ func (s *ProjectService) RequestWakeByDomain(domain string) (*database.Project, 
 }
 
 func (s *ProjectService) UpdateProjectRuntimeSettings(id string, userID string, req UpdateProjectRuntimeSettingsRequest) (*database.Project, error) {
-	if req.AutoSleepAfterMS != nil && *req.AutoSleepAfterMS < minAutoSleepAfterMS {
+	if req.AutoSleepAfterMS != nil && time.Duration(*req.AutoSleepAfterMS)*time.Millisecond < minAutoSleepAfter {
 		return nil, ErrInvalidAutoSleepAfter
 	}
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus, Search, TriangleAlert } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
 import CreateProjectDialog from '~/features/projects/components/CreateProjectDialog.vue'
 import ProjectEmptyState from '~/features/projects/components/ProjectEmptyState.vue'
@@ -16,6 +17,11 @@ import {
 import type { ProjectAction } from '~/features/projects/types'
 import { ApiError } from '~/lib/errors'
 
+type AutoSleepUpdateCallbacks = {
+  onSuccess?: () => void
+  onError?: (error: unknown) => void
+}
+
 const projectList = useProjectListData()
 const startProject = useStartProject()
 const stopProject = useStopProject()
@@ -26,15 +32,6 @@ const pendingActions = ref(new Map<string, ProjectAction>())
 const openCreateProjectDialog = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'running' | 'sleeping'>('all')
-
-const actionError = computed(() => {
-  const error =
-    startProject.error.value ??
-    stopProject.error.value ??
-    deleteProject.error.value ??
-    updateProjectRuntimeSettings.error.value
-  return errorMessage(error, 'Unable to update project.')
-})
 
 const visibleItems = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -74,6 +71,15 @@ const totalMemory = computed(() => {
   return formatBinaryBytes(total)
 })
 
+watch(
+  () => projectList.error.value,
+  (error) => {
+    if (error) {
+      toast.error(errorMessage(error, 'Unable to load projects.'))
+    }
+  },
+)
+
 function handleStart(projectId: string) {
   runProjectAction(projectId, 'start', () => startProject.mutateAsync(projectId))
 }
@@ -86,12 +92,17 @@ function handleDelete(projectId: string) {
   runProjectAction(projectId, 'delete', () => deleteProject.mutateAsync(projectId))
 }
 
-function handleUpdateAutoSleep(projectId: string, autoSleepAfterMS: number | null) {
+function handleUpdateAutoSleep(
+  projectId: string,
+  autoSleepAfterMS: number | null,
+  callbacks?: AutoSleepUpdateCallbacks,
+) {
   runProjectAction(projectId, 'runtime-settings', () =>
     updateProjectRuntimeSettings.mutateAsync({
       projectID: projectId,
       autoSleepAfterMS,
     }),
+    callbacks,
   )
 }
 
@@ -99,6 +110,7 @@ function runProjectAction(
   projectId: string,
   action: ProjectAction,
   mutate: () => Promise<unknown>,
+  callbacks?: AutoSleepUpdateCallbacks,
 ) {
   if (pendingActions.value.has(projectId)) {
     return
@@ -112,10 +124,27 @@ function runProjectAction(
   setPendingAction(projectId, action)
 
   void mutate()
-    .catch(() => undefined)
+    .then(() => {
+      if (action === 'runtime-settings') {
+        toast.success('Auto sleep settings saved.')
+      }
+      callbacks?.onSuccess?.()
+    })
+    .catch((error: unknown) => {
+      toast.error(errorMessage(error, fallbackActionError(action)))
+      callbacks?.onError?.(error)
+    })
     .finally(() => {
       clearPendingAction(projectId)
     })
+}
+
+function fallbackActionError(action: ProjectAction): string {
+  if (action === 'runtime-settings') {
+    return 'Unable to update project runtime settings.'
+  }
+
+  return 'Unable to update project.'
 }
 
 function setPendingAction(projectId: string, action: ProjectAction) {
@@ -271,22 +300,6 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
         <Plus class="size-4" aria-hidden="true" />
         Add Project
       </Button>
-    </div>
-
-    <div v-if="actionError || projectList.isError.value" class="px-6 py-4">
-      <Alert v-if="actionError" variant="destructive">
-        <AlertDescription>{{ actionError }}</AlertDescription>
-      </Alert>
-
-      <Alert
-        v-if="projectList.isError.value"
-        :class="{ 'mt-3': actionError }"
-        variant="destructive"
-      >
-        <AlertDescription>
-          {{ errorMessage(projectList.error.value, 'Unable to load projects.') }}
-        </AlertDescription>
-      </Alert>
     </div>
 
     <ProjectListSkeleton v-if="projectList.isLoadingProjects.value" />

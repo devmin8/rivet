@@ -29,6 +29,7 @@
     "tailwindcss": "^4.2.4",
     "vue": "beta",
     "vue-router": "^5.0.4",
+    "vue-sonner": "^2.0.9",
     "zod": "^3.24.0"
   },
   "devDependencies": {
@@ -72,5 +73,6 @@
     "@vue/server-renderer": "beta",
     "@vue/shared": "beta",
     "@vue/compat": "beta"
-  }
+  },
+  "packageManager": "bun@1.3.14"
 }

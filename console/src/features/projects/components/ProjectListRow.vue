@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ExternalLink, TriangleAlert } from 'lucide-vue-next'
+import { ExternalLink, Moon, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import ProjectActionsMenu from '~/features/projects/components/ProjectActionsMenu.vue'
+import ProjectAutoSleepForm from '~/features/projects/components/ProjectAutoSleepForm.vue'
 import ProjectEnvPanel from '~/features/projects/components/ProjectEnvPanel.vue'
 import ProjectStatusBadge from '~/features/projects/components/ProjectStatusBadge.vue'
 import type { ProjectAction, ProjectListItem } from '~/features/projects/types'
+
+type AutoSleepUpdateCallbacks = {
+  onSuccess?: () => void
+  onError?: (error: unknown) => void
+}
 
 const props = defineProps<{
   item: ProjectListItem
@@ -17,10 +23,27 @@ const emit = defineEmits<{
   start: [projectId: string]
   stop: [projectId: string]
   delete: [projectId: string]
-  updateAutoSleep: [projectId: string, autoSleepAfterMS: number | null]
+  updateAutoSleep: [
+    projectId: string,
+    autoSleepAfterMS: number | null,
+    callbacks?: AutoSleepUpdateCallbacks,
+  ]
 }>()
 
 const isEnvDialogOpen = ref(false)
+const isAutoSleepDialogOpen = ref(false)
+
+const isRuntimeSettingsPending = computed(
+  () => props.pendingAction === 'runtime-settings',
+)
+
+function handleUpdateAutoSleep(autoSleepAfterMS: number | null) {
+  emit('updateAutoSleep', props.item.project.id, autoSleepAfterMS, {
+    onSuccess: () => {
+      isAutoSleepDialogOpen.value = false
+    },
+  })
+}
 
 const domainHref = computed(() => {
   const domain = props.item.project.domain.trim()
@@ -155,9 +178,17 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
     <TableCell class="px-6 py-4">
       <div class="min-w-0 whitespace-normal">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <h2 class="truncate text-[13px] font-medium leading-6 tracking-tight">
-            {{ item.project.name }}
-          </h2>
+          <div class="flex min-w-0 items-center gap-1.5">
+            <h2 class="truncate text-[13px] font-medium leading-6 tracking-tight">
+              {{ item.project.name }}
+            </h2>
+            <Moon
+              v-if="item.project.auto_sleep_after_ms !== null"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-label="Auto sleep enabled"
+              title="Auto sleep enabled"
+            />
+          </div>
           <span
             class="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground"
           >
@@ -249,15 +280,33 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
             <ProjectEnvPanel :project="item.project" />
           </DialogContent>
         </Dialog>
+        <Dialog v-model:open="isAutoSleepDialogOpen">
+          <DialogContent class="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Auto sleep</DialogTitle>
+              <DialogDescription class="space-y-1">
+                <span class="block">
+                  Configure when
+                  <span class="font-medium text-foreground">{{ item.project.name }}</span>
+                  sleeps after inactivity.
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <ProjectAutoSleepForm
+              :auto-sleep-after-ms="item.project.auto_sleep_after_ms"
+              :is-pending="isRuntimeSettingsPending"
+              @update-auto-sleep="handleUpdateAutoSleep"
+            />
+          </DialogContent>
+        </Dialog>
         <ProjectActionsMenu
           :status="item.status"
-          :auto-sleep-after-ms="item.project.auto_sleep_after_ms"
           :pending-action="pendingAction"
           @start="emit('start', item.project.id)"
           @stop="emit('stop', item.project.id)"
           @delete="emit('delete', item.project.id)"
           @manage-environment="isEnvDialogOpen = true"
-          @update-auto-sleep="emit('updateAutoSleep', item.project.id, $event)"
+          @manage-auto-sleep="isAutoSleepDialogOpen = true"
         />
       </div>
     </TableCell>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@tanstack/vue-form'
 import { Loader2, Plus } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { toast } from 'vue-sonner'
 import { z } from 'zod'
 
 import { useCreateProject } from '~/features/projects/queries'
@@ -58,11 +58,12 @@ const form = useForm({
         form.reset()
         emit('update:open', false)
       },
+      onError: (error: unknown) => {
+        toast.error(errorMessage(error))
+      },
     })
   },
 })
-
-const mutationError = computed(() => errorMessage(createProject.error.value))
 
 function toCreateInput(value: ProjectCreateFormValues): CreateProjectInput {
   return {
@@ -116,10 +117,6 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
           Create and start a project from a public Docker image.
         </DialogDescription>
       </DialogHeader>
-
-      <Alert v-if="mutationError" variant="destructive">
-        <AlertDescription>{{ mutationError }}</AlertDescription>
-      </Alert>
 
       <form class="flex flex-col gap-4" @submit.prevent="form.handleSubmit">
         <FieldGroup class="space-y-4">

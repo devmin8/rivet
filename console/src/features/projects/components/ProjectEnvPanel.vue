@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useForm } from '@tanstack/vue-form'
 import { Loader2, Plus, Trash2 } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 import { z } from 'zod'
 
 import {
@@ -60,17 +61,15 @@ const form = useForm({
       },
       {
         onSuccess: resetForm,
+        onError: (error: unknown) => {
+          toast.error(errorMessage(error))
+        },
       },
     )
   },
 })
 
 const sortedItems = computed(() => env.data.value?.items ?? [])
-
-const mutationError = computed(() => {
-  const error = upsertEnv.error.value ?? deleteEnv.error.value
-  return errorMessage(error)
-})
 
 const requiresRestart = computed(() =>
   ['running', 'sleeping', 'waking', 'deploying'].includes(props.project.status),
@@ -83,6 +82,15 @@ const submitLabel = computed(() => {
 
   return editingKey.value === null ? 'Add variable' : 'Update variable'
 })
+
+watch(
+  () => env.error.value,
+  (error) => {
+    if (error) {
+      toast.error(errorMessage(error) || 'Unable to load environment variables.')
+    }
+  },
+)
 
 function editItem(key: string, kind: ProjectEnvKind, value: string | null) {
   editingKey.value = key
@@ -111,7 +119,9 @@ function removeItem(key: string) {
   deletingKey.value = key
   void deleteEnv
     .mutateAsync({ projectID: props.project.id, key })
-    .catch(() => undefined)
+    .catch((error: unknown) => {
+      toast.error(errorMessage(error))
+    })
     .finally(() => {
       deletingKey.value = null
     })
@@ -149,14 +159,6 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
       <p v-if="requiresRestart" class="text-sm text-amber-600 dark:text-amber-300">
         Restart or redeploy this project after changes.
       </p>
-
-      <Alert v-if="env.isError.value" variant="destructive">
-        <AlertDescription>{{ errorMessage(env.error.value) || 'Unable to load environment variables.' }}</AlertDescription>
-      </Alert>
-
-      <Alert v-if="mutationError" variant="destructive">
-        <AlertDescription>{{ mutationError }}</AlertDescription>
-      </Alert>
 
       <div v-if="env.isLoading.value" class="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 class="size-4 animate-spin" aria-hidden="true" />
@@ -210,9 +212,9 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
         </div>
       </div>
 
-      <form class="flex flex-col gap-3 rounded-md border p-3" @submit.prevent="form.handleSubmit">
-        <FieldGroup class="space-y-3">
-          <div class="flex flex-col gap-3 md:flex-row">
+      <form class="flex flex-col gap-1 rounded-md border p-3" @submit.prevent="form.handleSubmit">
+        <FieldGroup class="space-y-1">
+          <div class="flex flex-col gap-1 md:flex-row">
             <form.Field name="key">
               <template #default="{ field }">
                 <Field class="min-w-0 flex-1" :data-invalid="isInvalid(field)">

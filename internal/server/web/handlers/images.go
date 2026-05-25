@@ -118,7 +118,7 @@ func projectError(c fiber.Ctx, err error, message string) error {
 	if errors.Is(err, services.ErrInvalidAutoSleepAfter) {
 		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
 			Error:   "invalid_auto_sleep_after",
-			Message: "Auto sleep duration must be disabled or at least 60000 ms.",
+			Message: "Auto sleep duration must be disabled or at least 60 seconds.",
 		})
 	}
 	if errors.Is(err, services.ErrMissingSecretKey) || errors.Is(err, services.ErrInvalidSecretKey) {

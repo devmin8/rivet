@@ -2,6 +2,11 @@
 import ProjectListRow from '~/features/projects/components/ProjectListRow.vue'
 import type { ProjectAction, ProjectListItem } from '~/features/projects/types'
 
+type AutoSleepUpdateCallbacks = {
+  onSuccess?: () => void
+  onError?: (error: unknown) => void
+}
+
 defineProps<{
   items: ProjectListItem[]
   isLoadingStats: boolean
@@ -12,7 +17,11 @@ const emit = defineEmits<{
   start: [projectId: string]
   stop: [projectId: string]
   delete: [projectId: string]
-  updateAutoSleep: [projectId: string, autoSleepAfterMS: number | null]
+  updateAutoSleep: [
+    projectId: string,
+    autoSleepAfterMS: number | null,
+    callbacks?: AutoSleepUpdateCallbacks,
+  ]
 }>()
 </script>
 
@@ -77,7 +86,8 @@ const emit = defineEmits<{
         @stop="emit('stop', $event)"
         @delete="emit('delete', $event)"
         @update-auto-sleep="
-          (projectId, autoSleepAfterMS) => emit('updateAutoSleep', projectId, autoSleepAfterMS)
+          (projectId, autoSleepAfterMS, callbacks) =>
+            emit('updateAutoSleep', projectId, autoSleepAfterMS, callbacks)
         "
       />
     </TableBody>
