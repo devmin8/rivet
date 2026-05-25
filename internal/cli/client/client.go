@@ -162,6 +162,16 @@ func (c *Client) DeployProject(ctx context.Context, session *Session, projectID 
 	return &res, nil
 }
 
+func (c *Client) UpdateProjectRuntimeSettings(ctx context.Context, session *Session, projectID string, req dtos.UpdateProjectRuntimeSettingsRequest) (*dtos.ProjectResponse, error) {
+	var res dtos.ProjectResponse
+	err := c.patch(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/runtime-settings", session, req, http.StatusOK, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (c *Client) DeleteProject(ctx context.Context, session *Session, projectID string) error {
 	return c.delete(ctx, "/api/v1/projects/"+url.PathEscape(projectID), session, struct{}{}, http.StatusNoContent)
 }
@@ -178,6 +188,10 @@ func (c *Client) post(ctx context.Context, path string, session *Session, body a
 
 func (c *Client) put(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
 	return c.requestJSON(ctx, http.MethodPut, path, session, body, wantStatus, dest)
+}
+
+func (c *Client) patch(ctx context.Context, path string, session *Session, body any, wantStatus int, dest any) error {
+	return c.requestJSON(ctx, http.MethodPatch, path, session, body, wantStatus, dest)
 }
 
 func (c *Client) get(ctx context.Context, path string, session *Session, wantStatus int, dest any) error {

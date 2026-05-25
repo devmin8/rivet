@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -54,7 +55,19 @@ func newShipCmd(app *app) *cobra.Command {
 					return err
 				}
 
+				autoSleepAfterMS, err := promptAutoSleepAfter(cmd)
+				if err != nil {
+					return err
+				}
+
 				project, err := apiClient.CreateProject(ctx, session, req)
+				if err != nil {
+					return err
+				}
+
+				project, err = apiClient.UpdateProjectRuntimeSettings(ctx, session, project.ID, dtos.UpdateProjectRuntimeSettingsRequest{
+					AutoSleepAfterMS: autoSleepAfterMS,
+				})
 				if err != nil {
 					return err
 				}
@@ -119,6 +132,26 @@ func promptCreateProject(cmd *cobra.Command, platform string) (dtos.CreateProjec
 		Description: description,
 		Platform:    platform,
 	}, nil
+}
+
+func promptAutoSleepAfter(cmd *cobra.Command) (*int64, error) {
+	value, err := prompt.String(cmd.InOrStdin(), cmd.OutOrStdout(), "Auto sleep seconds (empty disables): ")
+	if err != nil {
+		return nil, err
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+
+	seconds, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || seconds < 60 {
+		return nil, errors.New("auto sleep must be empty or at least 60 seconds")
+	}
+
+	autoSleepAfterMS := seconds * int64(time.Second/time.Millisecond)
+	return &autoSleepAfterMS, nil
 }
 
 func shipProject(ctx context.Context, cmd *cobra.Command, app *app, session *client.Session, projectID string, platform string) error {

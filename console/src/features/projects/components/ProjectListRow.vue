@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ExternalLink, Moon, TriangleAlert } from 'lucide-vue-next'
+import { ExternalLink, TimerReset, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import ProjectActionsMenu from '~/features/projects/components/ProjectActionsMenu.vue'
@@ -182,7 +182,7 @@ function trimDecimal(value: number, maximumFractionDigits: number): string {
             <h2 class="truncate text-[13px] font-medium leading-6 tracking-tight">
               {{ item.project.name }}
             </h2>
-            <Moon
+            <TimerReset
               v-if="item.project.auto_sleep_after_ms !== null"
               class="size-3.5 shrink-0 text-muted-foreground"
               aria-label="Auto sleep enabled"
