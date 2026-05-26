@@ -120,7 +120,7 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
 
 <template>
   <Dialog :open="props.open" @update:open="handleOpenChange">
-    <DialogContent class="max-w-2xl">
+    <DialogContent class="flex max-h-[min(47rem,calc(100dvh-2rem))] max-w-2xl flex-col overflow-hidden">
       <DialogHeader>
         <DialogTitle>Add project</DialogTitle>
         <DialogDescription>
@@ -128,8 +128,8 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
         </DialogDescription>
       </DialogHeader>
 
-      <form class="flex flex-col gap-4" @submit.prevent="form.handleSubmit">
-        <FieldGroup class="space-y-4">
+      <form class="flex min-h-0 flex-col gap-4" @submit.prevent="form.handleSubmit">
+        <FieldGroup class="min-h-0 space-y-4 overflow-y-auto pr-1">
           <div class="flex flex-col gap-4 sm:flex-row">
             <form.Field name="name">
               <template #default="{ field }">
