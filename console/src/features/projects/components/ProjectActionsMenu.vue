@@ -121,21 +121,16 @@ function isActionPending() {
     </DropdownMenu>
   </div>
 
-  <!-- Delete project confirmation modal -->
-  <div
-    v-if="isConfirmingDelete"
-    class="fixed inset-0 z-60 flex items-center justify-center bg-black/45 p-4"
-    role="alertdialog"
-    aria-modal="true"
-    aria-labelledby="delete-project-title"
-  >
-    <div class="bg-background w-full max-w-sm rounded-lg border p-5 shadow-lg">
-      <h2 id="delete-project-title" class="text-base font-semibold">Delete project?</h2>
-      <p class="text-muted-foreground mt-2 text-sm">
-        This removes the project from the dashboard and stops managing its runtime state.
-      </p>
+  <Dialog v-model:open="isConfirmingDelete">
+    <DialogContent class="sm:max-w-sm">
+      <DialogHeader>
+        <DialogTitle>Delete project?</DialogTitle>
+        <DialogDescription>
+          This removes the project from the dashboard and stops managing its runtime state.
+        </DialogDescription>
+      </DialogHeader>
 
-      <div class="mt-5 flex justify-end gap-2">
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="outline"
@@ -158,6 +153,6 @@ function isActionPending() {
           Delete
         </Button>
       </div>
-    </div>
-  </div>
+    </DialogContent>
+  </Dialog>
 </template>
