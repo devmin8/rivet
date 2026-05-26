@@ -179,9 +179,8 @@ func (s *ProjectService) collectRuntimeStats(ctx context.Context, projects []dat
 func (s *ProjectService) runtimeStatsProjects(userID string, rawIDs string) ([]database.Project, error) {
 	var projects []database.Project
 	query := s.db.Where(
-		"created_by_id = ? AND is_active = ? AND status = ?",
+		"created_by_id = ? AND status = ?",
 		userID,
-		true,
 		database.StatusRunning,
 	)
 

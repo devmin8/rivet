@@ -19,7 +19,6 @@ func ToProjectResponse(project *database.Project) dtos.ProjectResponse {
 		TargetImageRef:   project.TargetImageRef,
 		LastError:        project.LastError,
 		AutoSleepAfterMS: project.AutoSleepAfterMS,
-		IsActive:         project.IsActive,
 		LastActiveAt:     project.LastActiveAt,
 		CreatedAt:        project.CreatedAt,
 		UpdatedAt:        project.UpdatedAt,

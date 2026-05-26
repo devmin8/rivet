@@ -22,7 +22,6 @@ export interface Project {
   target_image_ref: string
   last_error: string
   auto_sleep_after_ms: number | null
-  is_active: boolean
   last_active_at: string | null
   created_at: string
   updated_at: string

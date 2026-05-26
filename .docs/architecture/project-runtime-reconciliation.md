@@ -44,7 +44,7 @@ Start, stop, delete, and deploy handlers still perform their Docker work synchro
 
 - `start`: remove any old container, start the chosen image, then mark `running`
 - `stop`: remove the container, then mark `stopped`
-- `delete`: remove the container, then mark inactive and `stopped`
+- `delete`: remove the container, delete env vars, then delete the project row
 - `deploy`: mark `deploying`, replace the container with `target_image_ref`, then mark `running`
 
 If a start/deploy runtime action fails, mark the row `failed`. If stop/delete fails, return the error and do not pretend the operation succeeded.

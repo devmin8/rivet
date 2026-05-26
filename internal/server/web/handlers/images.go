@@ -91,12 +91,6 @@ func projectError(c fiber.Ctx, err error, message string) error {
 			Message: "Project was not found.",
 		})
 	}
-	if errors.Is(err, services.ErrProjectInactive) {
-		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
-			Error:   "project_inactive",
-			Message: "Project is not active.",
-		})
-	}
 	if errors.Is(err, services.ErrProjectNameAlreadyExists) {
 		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
 			Error:   "project_name_already_exists",

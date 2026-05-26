@@ -75,7 +75,7 @@ func (s *RoutingService) routes() ([]caddy.Route, error) {
 	var projects []database.Project
 
 	err := s.db.
-		Where("is_active = ? AND status IN ?", true, []database.Status{
+		Where("status IN ?", []database.Status{
 			database.StatusRunning,
 			database.StatusSleeping,
 			database.StatusWaking,

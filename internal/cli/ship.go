@@ -85,9 +85,6 @@ func newShipCmd(app *app) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if !project.IsActive {
-					return fmt.Errorf("project %s is not active", id)
-				}
 
 				fmt.Fprintf(cmd.OutOrStdout(), "🚀 Project %s selected.\n", project.ID)
 				fmt.Fprintf(cmd.OutOrStdout(), "Platform: %s\n", project.Platform)

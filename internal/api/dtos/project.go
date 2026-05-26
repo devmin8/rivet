@@ -29,7 +29,6 @@ type ProjectResponse struct {
 	TargetImageRef   string     `json:"target_image_ref"`
 	LastError        string     `json:"last_error"`
 	AutoSleepAfterMS *int64     `json:"auto_sleep_after_ms"`
-	IsActive         bool       `json:"is_active"`
 	LastActiveAt     *time.Time `json:"last_active_at"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`

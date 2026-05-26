@@ -95,7 +95,6 @@ type Project struct {
 
 	AutoSleepAfterMS *int64
 
-	IsActive     bool       `gorm:"not null;default:true"`
 	LastActiveAt *time.Time `gorm:"index"`
 
 	CreatedAt time.Time `gorm:"not null;autoCreateTime"`

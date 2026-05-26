@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 
 	"github.com/devmin8/rivet/internal/api/dtos"
 	"github.com/devmin8/rivet/internal/server/mapper"
@@ -31,7 +30,7 @@ func NewProjectHandler(projectService *services.ProjectService, routes RouteSync
 func (h *ProjectHandler) ListProjects(c fiber.Ctx) error {
 	userID, _ := requestctx.RequireUserID(c)
 
-	projects, err := h.projectService.ListProjects(userID, strings.EqualFold(c.Query("include_deleted"), "true"))
+	projects, err := h.projectService.ListProjects(userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dtos.ErrorResponse{
 			Error:   "internal_error",
@@ -101,12 +100,6 @@ func (h *ProjectHandler) GetProject(c fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(dtos.ErrorResponse{
 				Error:   "not_found",
 				Message: "Project was not found.",
-			})
-		}
-		if errors.Is(err, services.ErrProjectInactive) {
-			return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
-				Error:   "project_inactive",
-				Message: "Project is not active.",
 			})
 		}
 

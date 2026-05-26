@@ -15,7 +15,6 @@ import (
 )
 
 var ErrProjectNotFound = errors.New("project not found")
-var ErrProjectInactive = errors.New("project is not active")
 var ErrProjectNameAlreadyExists = errors.New("project name already exists")
 var ErrProjectDomainAlreadyExists = errors.New("project domain already exists")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
@@ -124,14 +123,9 @@ func classifyProjectCreateError(err error) error {
 	}
 }
 
-func (s *ProjectService) ListProjects(userID string, includeDeleted bool) ([]database.Project, error) {
-	query := s.db.Where("created_by_id = ?", userID)
-	if !includeDeleted {
-		query = query.Where("is_active = ?", true)
-	}
-
+func (s *ProjectService) ListProjects(userID string) ([]database.Project, error) {
 	var projects []database.Project
-	err := query.Order("created_at DESC").Find(&projects).Error
+	err := s.db.Where("created_by_id = ?", userID).Order("created_at DESC").Find(&projects).Error
 	return projects, err
 }
 
@@ -144,10 +138,6 @@ func (s *ProjectService) GetProject(id string, userID string) (*database.Project
 		return nil, err
 	}
 
-	if !project.IsActive {
-		return nil, ErrProjectInactive
-	}
-
 	return &project, nil
 }
 
@@ -155,7 +145,7 @@ func (s *ProjectService) GetProject(id string, userID string) (*database.Project
 // boundary, the request only has a Host header, not an authenticated project ID.
 func (s *ProjectService) GetActiveProjectByDomain(domain string) (*database.Project, error) {
 	var project database.Project
-	if err := s.db.Where("domain = ? AND is_active = ?", strings.TrimSpace(domain), true).First(&project).Error; err != nil {
+	if err := s.db.Where("domain = ?", strings.TrimSpace(domain)).First(&project).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
@@ -169,7 +159,7 @@ func (s *ProjectService) GetActiveProjectByDomain(domain string) (*database.Proj
 // coupling the unauthenticated wake path to dashboard/API project IDs.
 func (s *ProjectService) RequestWakeByDomain(domain string) (*database.Project, error) {
 	res := s.db.Model(&database.Project{}).
-		Where("domain = ? AND is_active = ? AND status = ?", strings.TrimSpace(domain), true, database.StatusSleeping).
+		Where("domain = ? AND status = ?", strings.TrimSpace(domain), database.StatusSleeping).
 		Updates(map[string]any{
 			"status":     database.StatusWaking,
 			"last_error": "",
@@ -187,7 +177,7 @@ func (s *ProjectService) UpdateProjectRuntimeSettings(id string, userID string, 
 	}
 
 	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ?", id, userID, true).
+		Where("id = ? AND created_by_id = ?", id, userID).
 		Update("auto_sleep_after_ms", req.AutoSleepAfterMS)
 
 	if res.Error != nil {
@@ -202,7 +192,7 @@ func (s *ProjectService) UpdateProjectRuntimeSettings(id string, userID string, 
 
 func (s *ProjectService) UpdateProjectTargetImage(id string, userID string, image string) (*database.Project, error) {
 	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ?", id, userID, true, database.StatusDeploying).
+		Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
 		Update("target_image_ref", strings.TrimSpace(image))
 
 	if res.Error != nil {
@@ -301,7 +291,7 @@ func (s *ProjectService) DeleteProject(ctx context.Context, id string, userID st
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
 
-	project, err := s.getProjectForOwner(id, userID, true)
+	project, err := s.getProjectForOwner(id, userID)
 	if err != nil {
 		return err
 	}
@@ -314,21 +304,22 @@ func (s *ProjectService) DeleteProject(ctx context.Context, id string, userID st
 		return err
 	}
 
-	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
-		Updates(map[string]any{
-			"is_active":    false,
-			"status":       database.StatusStopped,
-			"container_id": "",
-		})
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return s.classifyProjectGuardFailure(id, userID, true)
-	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("project_id = ?", id).Delete(&database.ProjectEnvVar{}).Error; err != nil {
+			return err
+		}
 
-	return nil
+		res := tx.Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
+			Delete(&database.Project{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return s.classifyProjectGuardFailure(id, userID, true)
+		}
+
+		return nil
+	})
 }
 
 func (s *ProjectService) DeployProject(ctx context.Context, id string, userID string) (*database.Project, error) {
@@ -366,7 +357,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, id string, userID st
 func (s *ProjectService) ActiveRuntimeProjects() ([]database.Project, error) {
 	var projects []database.Project
 	err := s.db.
-		Where("is_active = ? AND status IN ?", true, []database.Status{
+		Where("status IN ?", []database.Status{
 			database.StatusStarting,
 			database.StatusRunning,
 		}).
@@ -377,7 +368,7 @@ func (s *ProjectService) ActiveRuntimeProjects() ([]database.Project, error) {
 func (s *ProjectService) WakingProjects() ([]database.Project, error) {
 	var projects []database.Project
 	err := s.db.
-		Where("is_active = ? AND status = ?", true, database.StatusWaking).
+		Where("status = ?", database.StatusWaking).
 		Find(&projects).Error
 	return projects, err
 }
@@ -385,7 +376,7 @@ func (s *ProjectService) WakingProjects() ([]database.Project, error) {
 func (s *ProjectService) RunningAutoSleepProjects() ([]database.Project, error) {
 	var projects []database.Project
 	err := s.db.
-		Where("is_active = ? AND status = ? AND auto_sleep_after_ms IS NOT NULL", true, database.StatusRunning).
+		Where("status = ? AND auto_sleep_after_ms IS NOT NULL", database.StatusRunning).
 		Find(&projects).Error
 	return projects, err
 }
@@ -393,7 +384,7 @@ func (s *ProjectService) RunningAutoSleepProjects() ([]database.Project, error) 
 func (s *ProjectService) SleepingProjectsWithContainer() ([]database.Project, error) {
 	var projects []database.Project
 	err := s.db.
-		Where("is_active = ? AND status = ? AND container_id <> ?", true, database.StatusSleeping, "").
+		Where("status = ? AND container_id <> ?", database.StatusSleeping, "").
 		Find(&projects).Error
 	return projects, err
 }
@@ -485,7 +476,7 @@ func (s *ProjectService) MarkReconcileFailed(id string, containerID string, err 
 
 func (s *ProjectService) markDeploying(id string, userID string) (*database.Project, error) {
 	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ? AND target_image_ref <> ?", id, userID, true, database.StatusDeploying, "").
+		Where("id = ? AND created_by_id = ? AND status <> ? AND target_image_ref <> ?", id, userID, database.StatusDeploying, "").
 		Updates(map[string]any{
 			"status":     database.StatusDeploying,
 			"last_error": "",
@@ -526,7 +517,7 @@ func (s *ProjectService) markDeployRunning(id string, targetImage string, contai
 func (s *ProjectService) markStarted(id string, userID string, image string, containerID string) (*database.Project, error) {
 	now := time.Now().UTC()
 	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ?", id, userID, true, database.StatusDeploying).
+		Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
 		Updates(map[string]any{
 			"current_image_ref": image,
 			"status":            database.StatusRunning,
@@ -546,7 +537,7 @@ func (s *ProjectService) markStarted(id string, userID string, image string, con
 
 func (s *ProjectService) markStopped(id string, userID string) (*database.Project, error) {
 	res := s.db.Model(&database.Project{}).
-		Where("id = ? AND created_by_id = ? AND is_active = ? AND status <> ?", id, userID, true, database.StatusDeploying).
+		Where("id = ? AND created_by_id = ? AND status <> ?", id, userID, database.StatusDeploying).
 		Updates(map[string]any{
 			"status":       database.StatusStopped,
 			"container_id": "",
@@ -570,7 +561,7 @@ func (s *ProjectService) markRuntimeFailed(id string, containerID string, runtim
 }
 
 func (s *ProjectService) classifyProjectGuardFailure(id string, userID string, allowNoTarget bool) error {
-	project, err := s.getProjectForOwner(id, userID, false)
+	project, err := s.getProjectForOwner(id, userID)
 	if err != nil {
 		return err
 	}
@@ -584,16 +575,13 @@ func (s *ProjectService) classifyProjectGuardFailure(id string, userID string, a
 	return ErrProjectNotFound
 }
 
-func (s *ProjectService) getProjectForOwner(id string, userID string, includeInactive bool) (*database.Project, error) {
+func (s *ProjectService) getProjectForOwner(id string, userID string) (*database.Project, error) {
 	var project database.Project
 	if err := s.db.Where("id = ? AND created_by_id = ?", id, userID).First(&project).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
 		return nil, err
-	}
-	if !includeInactive && !project.IsActive {
-		return nil, ErrProjectInactive
 	}
 
 	return &project, nil

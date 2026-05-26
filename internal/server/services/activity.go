@@ -194,8 +194,7 @@ func (t *ActivityTracker) projectIDForHost(host string) (string, bool) {
 
 func (t *ActivityTracker) reloadDomains() {
 	var projects []database.Project
-	// Load only active projects because inactive/deleted projects should not receive wake/activity behavior.
-	if err := t.db.Where("is_active = ?", true).Find(&projects).Error; err != nil {
+	if err := t.db.Find(&projects).Error; err != nil {
 		if t.log != nil {
 			t.log.Warn("failed to load project domains for activity tracking", "err", err)
 		}
@@ -242,7 +241,7 @@ func (t *ActivityTracker) flush() {
 
 	for projectID, seenAt := range lastSeen {
 		if err := t.db.Model(&database.Project{}).
-			Where("id = ? AND is_active = ?", projectID, true).
+			Where("id = ?", projectID).
 			Update("last_active_at", seenAt).
 			Error; err != nil && t.log != nil {
 			t.log.Warn("failed to flush project activity", "project_id", projectID, "err", err)

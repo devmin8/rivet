@@ -151,9 +151,6 @@ func (s *ProjectEnvService) requireProject(projectID string, userID string) erro
 		}
 		return err
 	}
-	if !project.IsActive {
-		return ErrProjectInactive
-	}
 
 	return nil
 }
