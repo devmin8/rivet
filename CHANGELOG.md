@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-26
+
 ### Added
 
 - **Self-hosted PaaS** — Run Docker apps on a single VPS with a Go server, Vue dashboard, and Caddy reverse proxy. Plain Docker containers under the hood; no opaque runtime layer.
