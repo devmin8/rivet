@@ -1,0 +1,260 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (e.g. 0.1.0)
+        required: true
+        type: string
+      prerelease:
+        description: Mark as pre-release
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release metadata
+        id: meta
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/${{ github.event.repository.default_branch }}" ]; then
+            echo "Run this workflow from ${{ github.event.repository.default_branch }}."
+            exit 1
+          fi
+
+          VERSION="$VERSION_INPUT"
+          VERSION="${VERSION#v}"
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "Invalid semver: $VERSION"
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Move changelog notes to this version
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          VERSION="${{ steps.meta.outputs.version }}"
+          # Move the current Unreleased notes under the release version.
+          sed -i "s/## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] - ${DATE}/" CHANGELOG.md
+
+      - name: Commit changelog and create tag
+        run: |
+          # Use GitHub's standard Actions bot identity for commits made by workflows.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.meta.outputs.tag }}"
+          git tag "${{ steps.meta.outputs.tag }}"
+          git push origin HEAD
+          git push origin "${{ steps.meta.outputs.tag }}"
+
+  images:
+    name: Publish ${{ matrix.name }} image
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            image: ${{ github.repository }}-server
+            context: .
+            file: ./Dockerfile
+            cache_scope: rivet-server
+          - name: console
+            image: ${{ github.repository }}-console
+            context: ./console
+            file: ./console/Dockerfile
+            cache_scope: rivet-console
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.tag }}
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.cache_scope }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}
+          provenance: true
+          sbom: true
+
+      - name: Generate artifact attestation
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ matrix.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  build:
+    name: Build rivetctl (${{ matrix.suffix }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux-amd64
+          - goos: linux
+            goarch: arm64
+            suffix: linux-arm64
+          - goos: darwin
+            goarch: amd64
+            suffix: darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            suffix: darwin-arm64
+          - goos: windows
+            goarch: amd64
+            suffix: windows-amd64.exe
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build rivetctl
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w \
+            -X github.com/devmin8/rivet/internal/version.Version=${VERSION} \
+            -X github.com/devmin8/rivet/internal/version.Commit=${COMMIT} \
+            -X github.com/devmin8/rivet/internal/version.Date=${DATE}"
+          go build -ldflags "$LDFLAGS" -o "rivetctl-${{ matrix.suffix }}" ./cmd/rivetctl
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rivetctl-${{ matrix.suffix }}
+          path: rivetctl-${{ matrix.suffix }}
+
+  release:
+    name: Publish GitHub release
+    needs: [prepare, images, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract release notes
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          # Pull only this version's changelog section into the GitHub release body.
+          awk -v version="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "^## \\[" version "\\]") found=1
+              next
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "Release ${VERSION}" > release-notes.md
+          fi
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: sha256sum rivetctl-* > checksums.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.tag }}
+          body_path: release-notes.md
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            artifacts/rivetctl-*
+            artifacts/checksums.txt

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/devmin8/rivet/internal/cli/client"
+	"github.com/devmin8/rivet/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -26,8 +27,9 @@ func newRootCmd(cfg *cliConfig) *cobra.Command {
 	app := &app{cfg: cfg}
 
 	var rootCmd = &cobra.Command{
-		Use:   "rivet",
-		Short: "A cli to manage rivet pass application",
+		Use:     "rivet",
+		Short:   "A cli to manage rivet pass application",
+		Version: version.String(),
 	}
 
 	rootCmd.PersistentFlags().StringVar(
@@ -43,6 +45,7 @@ func newRootCmd(cfg *cliConfig) *cobra.Command {
 		"Default API request timeout; defaults from RIVET_API_TIMEOUT",
 	)
 
+	rootCmd.AddCommand(newVersionCmd())
 	rootCmd.AddCommand(newSignInCmd(app))
 	rootCmd.AddCommand(newSignUpCmd(app))
 	rootCmd.AddCommand(newShipCmd(app))
