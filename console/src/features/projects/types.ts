@@ -41,6 +41,7 @@ export interface CreateProjectInput {
   port: number
   platform: 'linux/amd64' | 'linux/arm64'
   imageRef: string
+  autoSleepAfterMS: number | null
   start: boolean
 }
 

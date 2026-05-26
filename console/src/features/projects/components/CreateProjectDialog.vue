@@ -4,6 +4,10 @@ import { Loader2, Plus } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
 
+import {
+  autoSleepAfterSecondsSchema,
+  autoSleepAfterSecondsToMs,
+} from '~/features/projects/auto-sleep'
 import { useCreateProject } from '~/features/projects/queries'
 import type { CreateProjectInput } from '~/features/projects/types'
 import { ApiError } from '~/lib/errors'
@@ -24,6 +28,7 @@ const createProjectSchema = z.object({
     .max(65535, 'Port must be between 1 and 65535.'),
   description: z.string().max(2048, 'Description is too long.'),
   platform: z.enum(['linux/amd64', 'linux/arm64']),
+  autoSleepAfterSeconds: autoSleepAfterSecondsSchema,
 })
 
 type ProjectCreateFormValues = z.infer<typeof createProjectSchema>
@@ -45,6 +50,7 @@ const defaultValues: ProjectCreateFormValues = {
   port: 80,
   description: '',
   platform: 'linux/amd64',
+  autoSleepAfterSeconds: '60',
 }
 
 const form = useForm({
@@ -73,6 +79,7 @@ function toCreateInput(value: ProjectCreateFormValues): CreateProjectInput {
     port: value.port,
     description: value.description.trim(),
     platform: value.platform,
+    autoSleepAfterMS: autoSleepAfterSecondsToMs(value.autoSleepAfterSeconds),
     start: true,
   }
 }
@@ -88,7 +95,10 @@ function handleOpenChange(nextOpen: boolean) {
   emit('update:open', nextOpen)
   if (nextOpen) {
     createProject.reset()
+    return
   }
+
+  form.reset()
 }
 
 function errorMessage(error: unknown): string {
@@ -284,6 +294,35 @@ function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolea
                   </Button>
                 </div>
                 <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
+              </Field>
+            </template>
+          </form.Field>
+
+          <form.Field name="autoSleepAfterSeconds">
+            <template #default="{ field }">
+              <Field :data-invalid="isInvalid(field)">
+                <FieldLabel for="project-auto-sleep">Sleep After (secs)</FieldLabel>
+                <Input
+                  id="project-auto-sleep"
+                  :name="field.name"
+                  :model-value="field.state.value"
+                  :disabled="createProject.isPending.value"
+                  type="number"
+                  inputmode="numeric"
+                  placeholder="60"
+                  aria-describedby="project-auto-sleep-description project-auto-sleep-error"
+                  :aria-invalid="isInvalid(field)"
+                  @blur="field.handleBlur"
+                  @input="field.handleChange(($event.target as HTMLInputElement).value)"
+                />
+                <FieldDescription id="project-auto-sleep-description">
+                  Leave empty to disable auto sleep.
+                </FieldDescription>
+                <FieldError
+                  v-if="isInvalid(field)"
+                  id="project-auto-sleep-error"
+                  :errors="field.state.meta.errors"
+                />
               </Field>
             </template>
           </form.Field>

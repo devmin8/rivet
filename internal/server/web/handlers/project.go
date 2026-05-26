@@ -10,6 +10,7 @@ import (
 	"github.com/devmin8/rivet/internal/server/mapper"
 	"github.com/devmin8/rivet/internal/server/services"
 	"github.com/devmin8/rivet/internal/server/web/requestctx"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -44,23 +45,21 @@ func (h *ProjectHandler) ListProjects(c fiber.Ctx) error {
 func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 	req := new(dtos.CreateProjectRequest)
 	if err := c.Bind().Body(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Request body is invalid.",
-		})
+		return createProjectBindError(c, err)
 	}
 
 	userID, _ := requestctx.RequireUserID(c)
 
 	project, err := h.projectService.CreateProject(c.Context(), services.CreateProjectRequest{
-		Name:        req.Name,
-		Domain:      req.Domain,
-		Description: req.Description,
-		Port:        req.Port,
-		Platform:    req.Platform,
-		ImageRef:    req.ImageRef,
-		Start:       req.Start,
-		CreatedByID: userID,
+		Name:             req.Name,
+		Domain:           req.Domain,
+		Description:      req.Description,
+		Port:             req.Port,
+		Platform:         req.Platform,
+		ImageRef:         req.ImageRef,
+		AutoSleepAfterMS: req.AutoSleepAfterMS,
+		Start:            req.Start,
+		CreatedByID:      userID,
 	})
 
 	if err != nil {
@@ -70,6 +69,27 @@ func (h *ProjectHandler) CreateProject(c fiber.Ctx) error {
 	h.syncRoutes(c.Context(), project.ID)
 
 	return c.Status(fiber.StatusCreated).JSON(mapper.ToProjectResponse(project))
+}
+
+func createProjectBindError(c fiber.Ctx, err error) error {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		for _, validationErr := range validationErrors {
+			// Bind validates the DTO before the service runs, so invalid domains
+			// must be mapped here instead of in projectError.
+			if validationErr.Field() == "Domain" && validationErr.Tag() == "domain_or_url" {
+				return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+					Error:   "invalid_domain",
+					Message: "Domain is invalid.",
+				})
+			}
+		}
+	}
+
+	return c.Status(fiber.StatusBadRequest).JSON(dtos.ErrorResponse{
+		Error:   "invalid_request",
+		Message: "Request body is invalid.",
+	})
 }
 
 func (h *ProjectHandler) GetProject(c fiber.Ctx) error {

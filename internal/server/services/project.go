@@ -16,13 +16,14 @@ import (
 
 var ErrProjectNotFound = errors.New("project not found")
 var ErrProjectInactive = errors.New("project is not active")
+var ErrProjectNameAlreadyExists = errors.New("project name already exists")
+var ErrProjectDomainAlreadyExists = errors.New("project domain already exists")
 var ErrDeployInProgress = errors.New("deploy is already in progress")
 var ErrNoTargetImage = errors.New("project has no target image")
 var ErrImageRequiredToStart = errors.New("image reference is required to start project")
 var ErrInvalidAutoSleepAfter = errors.New("auto sleep duration must be disabled or at least 60 seconds")
 var ErrProjectStateChanged = errors.New("project runtime state changed")
 
-const defaultAutoSleepAfter = time.Minute
 const minAutoSleepAfter = time.Minute
 
 type ProjectService struct {
@@ -40,14 +41,15 @@ type ProjectService struct {
 }
 
 type CreateProjectRequest struct {
-	Name        string
-	Domain      string
-	Description string
-	Port        uint32
-	Platform    string
-	ImageRef    string
-	Start       bool
-	CreatedByID string
+	Name             string
+	Domain           string
+	Description      string
+	Port             uint32
+	Platform         string
+	ImageRef         string
+	AutoSleepAfterMS *int64
+	Start            bool
+	CreatedByID      string
 }
 
 type UpdateProjectRuntimeSettingsRequest struct {
@@ -69,7 +71,10 @@ func NewProjectServiceWithLogger(db *gorm.DB, docker *docker.Client, secretKey [
 }
 
 func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectRequest) (*database.Project, error) {
-	autoSleepAfterMS := defaultAutoSleepAfter.Milliseconds()
+	if req.AutoSleepAfterMS != nil && time.Duration(*req.AutoSleepAfterMS)*time.Millisecond < minAutoSleepAfter {
+		return nil, ErrInvalidAutoSleepAfter
+	}
+
 	imageRef := strings.TrimSpace(req.ImageRef)
 	if req.Start && imageRef == "" {
 		return nil, ErrImageRequiredToStart
@@ -83,13 +88,13 @@ func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectReq
 		Platform:         normalizePlatform(req.Platform),
 		TargetImageRef:   imageRef,
 		Status:           database.StatusStopped,
-		AutoSleepAfterMS: &autoSleepAfterMS,
+		AutoSleepAfterMS: req.AutoSleepAfterMS,
 		CreatedByID:      req.CreatedByID,
 		UpdatedByID:      req.CreatedByID,
 	}
 
 	if err := s.db.Create(project).Error; err != nil {
-		return nil, err
+		return nil, classifyProjectCreateError(err)
 	}
 
 	if !req.Start {
@@ -100,6 +105,23 @@ func (s *ProjectService) CreateProject(ctx context.Context, req CreateProjectReq
 	defer s.lifecycleMu.Unlock()
 
 	return s.startProject(ctx, project, req.CreatedByID)
+}
+
+func classifyProjectCreateError(err error) error {
+	if !isUniqueConstraintError(err) {
+		return err
+	}
+
+	errText := strings.ToLower(err.Error())
+
+	switch {
+	case strings.Contains(errText, "projects.domain") || strings.Contains(errText, "idx_projects_domain"):
+		return ErrProjectDomainAlreadyExists
+	case strings.Contains(errText, "projects.name") || strings.Contains(errText, "idx_projects_name"):
+		return ErrProjectNameAlreadyExists
+	default:
+		return err
+	}
 }
 
 func (s *ProjectService) ListProjects(userID string, includeDeleted bool) ([]database.Project, error) {

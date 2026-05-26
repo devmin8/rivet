@@ -97,6 +97,18 @@ func projectError(c fiber.Ctx, err error, message string) error {
 			Message: "Project is not active.",
 		})
 	}
+	if errors.Is(err, services.ErrProjectNameAlreadyExists) {
+		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
+			Error:   "project_name_already_exists",
+			Message: "Project name already exists.",
+		})
+	}
+	if errors.Is(err, services.ErrProjectDomainAlreadyExists) {
+		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
+			Error:   "project_domain_already_exists",
+			Message: "Project domain already exists.",
+		})
+	}
 	if errors.Is(err, services.ErrDeployInProgress) {
 		return c.Status(fiber.StatusConflict).JSON(dtos.ErrorResponse{
 			Error:   "deploy_in_progress",

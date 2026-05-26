@@ -3,13 +3,14 @@ package dtos
 import "time"
 
 type CreateProjectRequest struct {
-	Name        string `json:"name" validate:"required,notblank,max=255"`
-	Domain      string `json:"domain" validate:"required,domain_or_url,max=255"`
-	Description string `json:"description" validate:"max=2048"`
-	Port        uint32 `json:"port" validate:"required,port"`
-	Platform    string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
-	ImageRef    string `json:"image_ref" validate:"omitempty,notblank,max=2048"`
-	Start       bool   `json:"start"`
+	Name             string `json:"name" validate:"required,notblank,max=255"`
+	Domain           string `json:"domain" validate:"required,domain_or_url,max=255"`
+	Description      string `json:"description" validate:"max=2048"`
+	Port             uint32 `json:"port" validate:"required,port"`
+	Platform         string `json:"platform" validate:"omitempty,oneof=linux/amd64 linux/arm64"`
+	ImageRef         string `json:"image_ref" validate:"omitempty,notblank,max=2048"`
+	AutoSleepAfterMS *int64 `json:"auto_sleep_after_ms" validate:"omitempty,min=60000"`
+	Start            bool   `json:"start"`
 }
 
 type UpdateProjectRuntimeSettingsRequest struct {

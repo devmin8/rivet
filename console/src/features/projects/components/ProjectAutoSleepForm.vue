@@ -4,18 +4,14 @@ import { LoaderCircle } from 'lucide-vue-next'
 import { watch } from 'vue'
 import { z } from 'zod'
 
+import {
+  autoSleepAfterMsToSeconds,
+  autoSleepAfterSecondsSchema,
+  autoSleepAfterSecondsToMs,
+} from '~/features/projects/auto-sleep'
+
 const autoSleepSchema = z.object({
-  autoSleepAfterSeconds: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === '' || /^\d+$/.test(value),
-      'Enter whole seconds, or leave empty to disable auto sleep.',
-    )
-    .refine(
-      (value) => value === '' || Number(value) >= 60,
-      'Auto sleep must be at least 60 seconds.',
-    ),
+  autoSleepAfterSeconds: autoSleepAfterSecondsSchema,
 })
 
 type AutoSleepFormValues = z.infer<typeof autoSleepSchema>
@@ -31,31 +27,22 @@ const emit = defineEmits<{
 
 const form = useForm({
   defaultValues: {
-    autoSleepAfterSeconds: formatSeconds(props.autoSleepAfterMs),
+    autoSleepAfterSeconds: autoSleepAfterMsToSeconds(props.autoSleepAfterMs),
   },
   validators: {
     onSubmit: autoSleepSchema,
   },
   onSubmit: ({ value }: { value: AutoSleepFormValues }) => {
-    const seconds = value.autoSleepAfterSeconds.trim()
-    emit('updateAutoSleep', seconds === '' ? null : Number(seconds) * 1000)
+    emit('updateAutoSleep', autoSleepAfterSecondsToMs(value.autoSleepAfterSeconds))
   },
 })
 
 watch(
   () => props.autoSleepAfterMs,
   (autoSleepAfterMs) => {
-    form.setFieldValue('autoSleepAfterSeconds', formatSeconds(autoSleepAfterMs))
+    form.setFieldValue('autoSleepAfterSeconds', autoSleepAfterMsToSeconds(autoSleepAfterMs))
   },
 )
-
-function formatSeconds(autoSleepAfterMs: number | null): string {
-  if (autoSleepAfterMs === null) {
-    return ''
-  }
-
-  return String(autoSleepAfterMs / 1000)
-}
 
 function isInvalid(field: { state: { meta: { isTouched: boolean; isValid: boolean } } }) {
   return field.state.meta.isTouched && !field.state.meta.isValid

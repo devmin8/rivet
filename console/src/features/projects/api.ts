@@ -29,6 +29,7 @@ export function createProject(input: CreateProjectInput): Promise<Project> {
       port: input.port,
       platform: input.platform,
       image_ref: input.imageRef,
+      auto_sleep_after_ms: input.autoSleepAfterMS,
       start: input.start,
     }),
   })
