@@ -22,7 +22,6 @@ show_help() {
 Usage:
   curl -fsSL https://<your-rivet-website>/install.sh | sh
   curl -fsSL https://<your-rivet-website>/install.sh | RIVET_DOMAIN=rivet.example.com sh
-  ./scripts/install.sh
 
 Environment variables:
   🌐 RIVET_DOMAIN        Public domain for the Rivet server.
@@ -212,8 +211,8 @@ setup_configuration() {
 }
 
 ensure_host() {
-	[ -n "$RIVET_DOMAIN" ] || fail "RIVET_DOMAIN is required, for example: RIVET_DOMAIN=rivet.example.com ./scripts/install.sh"
-	[ -n "$RIVET_SECRET_KEY" ] || fail "RIVET_SECRET_KEY is required, for example: RIVET_SECRET_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n') ./scripts/install.sh"
+	[ -n "$RIVET_DOMAIN" ] || fail "RIVET_DOMAIN is required, for example: curl -fsSL https://<your-rivet-website>/install.sh | RIVET_DOMAIN=rivet.example.com sh"
+	[ -n "$RIVET_SECRET_KEY" ] || fail "RIVET_SECRET_KEY is required, for example: curl -fsSL https://<your-rivet-website>/install.sh | RIVET_SECRET_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n') sh"
 	validate_secret_key
 	[ -S "$RIVET_DOCKER_SOCK" ] || fail "Docker socket not found at $RIVET_DOCKER_SOCK"
 }
