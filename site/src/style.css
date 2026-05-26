@@ -1,0 +1,221 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/geist-latin.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/geist-mono-latin.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --color-sand-50: #fcfcfc;
+  --color-sand-100: #f2f2f2;
+  --color-sand-200: #e5e5e5;
+  --color-sand-300: #c8c8c8;
+  --color-sand-400: #a0a0a0;
+  --color-sand-500: #737373;
+  --color-sand-600: #555555;
+  --color-sand-700: #3d3d3d;
+  --color-sand-800: #2a2a2a;
+  --color-sand-900: #1a1a1a;
+  --color-sand-950: #111111;
+
+  --animate-cursor: cursor 1.1s step-end infinite;
+  --spacing-scroll-offset: 5rem;
+
+  @keyframes cursor {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  ::selection {
+    @apply bg-sand-900 text-sand-50 dark:bg-sand-100 dark:text-sand-950;
+  }
+
+  [id] {
+    scroll-margin-top: var(--spacing-scroll-offset);
+  }
+}
+
+@layer components {
+  .nav-link {
+    @apply text-[13px] text-sand-600 hover:text-sand-900 dark:text-sand-400 dark:hover:text-sand-50
+      transition-colors duration-150 tracking-tight;
+  }
+
+  .section-label {
+    @apply font-mono text-[10px] tracking-[0.12em] uppercase text-sand-600 dark:text-sand-400;
+  }
+
+  .feature-row {
+    @apply grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-2 sm:gap-8 py-5
+      border-t border-sand-200 dark:border-sand-800 items-baseline;
+  }
+
+  .step-card {
+    @apply bg-sand-100 dark:bg-sand-800/40 rounded-xl p-6 flex flex-col gap-3;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
+      bg-sand-900 text-sand-50 dark:bg-sand-100 dark:text-sand-950
+      text-sm font-semibold tracking-tight
+      hover:bg-sand-800 dark:hover:bg-white
+      transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
+      border border-sand-200 dark:border-sand-700
+      text-sm font-medium text-sand-700 dark:text-sand-300
+      hover:bg-sand-100 dark:hover:bg-sand-800/60
+      transition-colors duration-150;
+  }
+
+  .mono-inline {
+    @apply font-mono text-[0.8125rem] leading-snug
+      text-sand-900 dark:text-sand-100
+      bg-white dark:bg-sand-800/90
+      border border-sand-300/80 dark:border-sand-600/80
+      rounded-[5px] px-1.5 py-0.5 box-decoration-clone wrap-anywhere;
+  }
+
+  .docs-toc-link {
+    @apply block text-[13px] text-sand-600 hover:text-sand-900 dark:text-sand-400 dark:hover:text-sand-50
+      transition-colors duration-150 py-1.5 leading-snug;
+  }
+
+  .docs-toc-link.is-active {
+    @apply text-sand-900 dark:text-sand-50 font-medium
+      border-l-2 border-sand-900 dark:border-sand-100 pl-2.5 -ml-2.5;
+  }
+
+  .docs-step {
+    @apply py-12 border-t border-sand-200 dark:border-sand-800;
+  }
+
+  .checklist-item {
+    @apply flex gap-3 text-sm text-sand-700 dark:text-sand-300 items-start [&>:last-child]:min-w-0;
+  }
+
+  /* Code blocks: short lines fill width, long lines scroll horizontally. */
+  .code-block {
+    @apply m-0 max-w-full overscroll-x-contain rounded-xl overflow-x-auto overflow-y-hidden
+      border border-sand-200 bg-sand-100 p-0
+      dark:border-sand-800 dark:bg-sand-800;
+  }
+
+  .code-block code {
+    @apply block min-w-full w-max box-border border-0 p-0 whitespace-pre
+      font-mono text-xs sm:text-[13px] leading-relaxed
+      bg-sand-100 p-4 text-sand-800 sm:p-5
+      dark:bg-sand-800 dark:text-sand-200;
+  }
+
+  .code-block .comment {
+    @apply text-sand-500;
+  }
+
+  /* Hero terminal — sequencing in main.ts (.is-active / .is-visible). */
+  .terminal-demo {
+    @apply relative overflow-x-auto overflow-y-hidden overscroll-x-contain bg-[#141210];
+  }
+
+  .terminal-body {
+    @apply relative min-h-full min-w-full w-max bg-[#141210] p-5;
+  }
+
+  .terminal-sizer {
+    @apply h-0 overflow-hidden whitespace-nowrap pointer-events-none invisible;
+  }
+
+  .terminal-phase {
+    @apply absolute inset-5 w-max max-w-full whitespace-nowrap opacity-0 pointer-events-none;
+  }
+
+  .terminal-phase.is-active {
+    @apply opacity-100;
+  }
+
+  .terminal-row {
+    @apply opacity-0;
+  }
+
+  .terminal-row.is-visible {
+    animation: terminal-row 0.36s ease-out forwards;
+  }
+
+  .terminal-type {
+    @apply inline-block overflow-hidden align-bottom max-w-0;
+  }
+
+  .terminal-row.is-visible .terminal-type {
+    animation: terminal-type 0.95s steps(var(--terminal-type-steps)) forwards;
+  }
+}
+
+@keyframes terminal-row {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes terminal-type {
+  from {
+    max-width: 0;
+  }
+  to {
+    max-width: var(--terminal-type-width);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-row,
+  .terminal-type,
+  .terminal-row.is-visible,
+  .terminal-row.is-visible .terminal-type {
+    animation: none;
+  }
+
+  .terminal-row.is-visible,
+  .terminal-phase.is-active {
+    @apply opacity-100;
+    transform: none;
+  }
+
+  .terminal-type {
+    max-width: none;
+  }
+}

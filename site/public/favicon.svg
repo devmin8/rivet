@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" aria-label="Rivet">
+  <rect x="2" y="13" width="16" height="4" rx="2" fill="#09090b" fill-opacity="0.25"/>
+  <rect x="2" y="8" width="16" height="4" rx="2" fill="#09090b" fill-opacity="0.55"/>
+  <rect x="2" y="3" width="16" height="4" rx="2" fill="#09090b"/>
+</svg>

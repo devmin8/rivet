@@ -1,0 +1,16 @@
+# Rivet
+
+Rivet is an open-source, self-hosted PaaS for running Docker applications on a single VPS.
+It provides automatic SSL, domain routing, encrypted secrets, auto-sleep, monitoring, and a web dashboard.
+
+## Primary Links
+
+- [Website](https://getrivet.app/)
+- [Documentation](https://getrivet.app/docs.html)
+- [Source code](https://github.com/devmin8/rivet)
+- [README](https://github.com/devmin8/rivet#readme)
+- [Sitemap](https://getrivet.app/sitemap.xml)
+
+## Usage Notes
+
+Rivet is MIT licensed. Public website content may be indexed for search and retrieval.

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Rivet - Self-hosted PaaS for your VPS">
+  <rect width="1200" height="630" fill="#FCFCFC"/>
+
+  <g transform="translate(120 180)">
+    <g transform="scale(3.2)">
+      <rect x="2" y="13" width="16" height="4" rx="2" fill="#1A1A1A" opacity="0.25"/>
+      <rect x="2" y="8" width="16" height="4" rx="2" fill="#1A1A1A" opacity="0.55"/>
+      <rect x="2" y="3" width="16" height="4" rx="2" fill="#1A1A1A"/>
+    </g>
+
+    <text
+      x="88"
+      y="52"
+      font-family="Geist Mono"
+      font-size="52"
+      font-weight="600"
+      fill="#1A1A1A"
+      letter-spacing="-1.5"
+    >rivet</text>
+
+    <text
+      x="0"
+      y="150"
+      font-family="Geist"
+      font-size="48"
+      font-weight="800"
+      fill="#1A1A1A"
+      letter-spacing="-1.2"
+    >Your VPS. Your platform.</text>
+
+    <text
+      x="0"
+      y="210"
+      font-family="Geist"
+      font-size="48"
+      font-weight="800"
+      fill="#1A1A1A"
+      letter-spacing="-1.2"
+    >One server bill.</text>
+
+    <text
+      x="0"
+      y="270"
+      font-family="Geist"
+      font-size="24"
+      font-weight="400"
+      fill="#737373"
+    >Open-source self-hosted PaaS for Docker on a single VPS</text>
+  </g>
+</svg>

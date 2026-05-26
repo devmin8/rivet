@@ -6,6 +6,7 @@ Rivet = self-hosted PaaS.
 
 - Backend: Go
 - Frontend: Vue 3 (`./console`)
+- Marketing site (`./site`)
 - Package manager: Bun
 
 ---
@@ -65,6 +66,32 @@ Rules:
 ```bash
 bun run --cwd console components:dts
 ```
+
+---
+
+## Marketing site
+
+Public site only: `./site` — not console app.
+
+Stack: Vite + TypeScript + Tailwind v4. No framework.
+
+Files:
+
+- `index.html` = markup + SEO
+- `src/main.ts` = interactivity only
+- `src/style.css` = styles
+- `public/` = static assets
+
+Theme:
+
+- use `dark` class
+- persist in `localStorage["rivet-theme"]`
+- keep FOUC script inline in `index.html`
+
+Commands:
+
+- dev: `bun run --cwd site dev` on port `4000`
+- build: `bun run --cwd site build`
 
 ---
 

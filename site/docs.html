@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script>
+      ;(function () {
+        var root = document.documentElement
+        try {
+          var stored = localStorage.getItem('rivet-theme')
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          var useDark = stored === 'dark' || (!stored && prefersDark)
+          root.classList.toggle('dark', useDark)
+          root.style.colorScheme = useDark ? 'dark' : 'light'
+        } catch {}
+      })()
+    </script>
+
+    <style>
+      html {
+        color-scheme: light;
+        background-color: #fcfcfc;
+        color: #1a1a1a;
+        font-family: 'Geist', system-ui, sans-serif;
+      }
+      html.dark {
+        color-scheme: dark;
+        background-color: #111111;
+        color: #fcfcfc;
+      }
+    </style>
+
+    <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/geist-mono-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <title>Rivet Docs — Install and Deploy on a VPS</title>
+    <meta
+      name="description"
+      content="Install Rivet on a VPS, set up the CLI, and deploy your first Docker app in minutes. Clear step-by-step guide for engineers."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta
+      name="googlebot"
+      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <meta name="author" content="Devmin8" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="canonical" href="https://getrivet.app/docs.html" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://getrivet.app/docs.html" />
+    <meta property="og:title" content="Rivet Docs — Install and Deploy on a VPS" />
+    <meta
+      property="og:description"
+      content="Install Rivet on a VPS, set up the CLI, and deploy your first Docker app in minutes."
+    />
+    <meta property="og:image" content="https://getrivet.app/og-image.png" />
+    <meta property="og:image:alt" content="Rivet documentation for installing a self-hosted PaaS on a VPS" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Rivet" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rivet Docs — Install and Deploy on a VPS" />
+    <meta
+      name="twitter:description"
+      content="Install Rivet on a VPS, set up the CLI, and deploy your first Docker app in minutes."
+    />
+    <meta name="twitter:image" content="https://getrivet.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Rivet documentation for installing a self-hosted PaaS on a VPS" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "@id": "https://getrivet.app/docs.html#docs",
+        "headline": "Rivet Docs — Install and Deploy on a VPS",
+        "description": "Install Rivet on a VPS, set up the CLI, and deploy your first Docker app in minutes.",
+        "url": "https://getrivet.app/docs.html",
+        "image": "https://getrivet.app/og-image.png",
+        "author": {
+          "@type": "Organization",
+          "name": "Devmin8"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Rivet",
+          "url": "https://getrivet.app/"
+        },
+        "about": {
+          "@type": "SoftwareApplication",
+          "name": "Rivet",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Linux",
+          "codeRepository": "https://github.com/devmin8/rivet"
+        },
+        "proficiencyLevel": "Beginner",
+        "inLanguage": "en"
+      }
+    </script>
+
+    <meta name="theme-color" content="#FCFCFC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+  </head>
+
+  <body class="bg-sand-50 dark:bg-sand-950 text-sand-900 dark:text-sand-100 font-sans">
+    <header
+      class="sticky top-0 z-50 bg-sand-50/95 dark:bg-sand-950/95 backdrop-blur-sm border-b border-sand-200/50 dark:border-sand-800/50"
+    >
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <a
+          href="/"
+          aria-label="Rivet home"
+          class="flex items-center gap-2.5 text-sand-900 dark:text-sand-100 no-underline"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            class="shrink-0"
+          >
+            <rect
+              x="2"
+              y="13"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+              opacity="0.25"
+            />
+            <rect
+              x="2"
+              y="8"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+              opacity="0.55"
+            />
+            <rect
+              x="2"
+              y="3"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+            />
+          </svg>
+          <span class="font-mono font-semibold text-[15px] tracking-tighter leading-none"
+            >rivet</span
+          >
+        </a>
+
+        <nav aria-label="Main navigation" class="hidden sm:flex items-center gap-6">
+          <a href="/#features" class="nav-link">Features</a>
+          <a href="/#how-it-works" class="nav-link">How it works</a>
+          <a href="/docs.html" class="nav-link text-sand-900 dark:text-sand-50">Docs</a>
+          <a href="https://github.com/devmin8/rivet" rel="noopener noreferrer" class="nav-link"
+            >GitHub</a
+          >
+        </nav>
+
+        <button
+          id="themeToggle"
+          type="button"
+          aria-label="Toggle light/dark theme"
+          class="ml-4 w-8 h-8 rounded-md flex items-center justify-center text-sand-400 hover:text-sand-900 dark:hover:text-sand-100 hover:bg-sand-100 dark:hover:bg-sand-800 transition-colors duration-150"
+        >
+          <svg
+            class="hidden dark:block w-[15px] h-[15px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg
+            class="block dark:hidden w-[15px] h-[15px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 lg:py-16">
+      <div class="grid [&>*]:min-w-0 lg:grid-cols-[auto_minmax(0,1fr)] gap-10 lg:gap-14 items-start">
+        <aside class="sticky top-scroll-offset hidden lg:block">
+          <nav aria-label="On this page" class="space-y-1">
+            <div class="section-label mb-3">On this page</div>
+            <a href="#overview" class="docs-toc-link">Overview</a>
+            <a href="#vps" class="docs-toc-link">1. Prepare your VPS</a>
+            <a href="#install" class="docs-toc-link">2. Install Rivet</a>
+            <a href="#cli" class="docs-toc-link">3. Install the CLI</a>
+            <a href="#account" class="docs-toc-link">4. Create an account</a>
+            <a href="#dockerfile" class="docs-toc-link">5. Add a Dockerfile</a>
+            <a href="#ship" class="docs-toc-link">6. Ship your app</a>
+            <a href="#env" class="docs-toc-link">Environment variables</a>
+            <a href="#next" class="docs-toc-link">What's next</a>
+          </nav>
+        </aside>
+
+        <article>
+          <header class="mb-10">
+            <div class="section-label mb-3">Documentation</div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
+              Deploy to your VPS in six steps
+            </h1>
+            <p class="text-base text-sand-600 dark:text-sand-400 leading-relaxed max-w-2xl m-0">
+              Rivet turns a plain Linux VPS into a self-hosted PaaS. Install the control plane once,
+              then ship any app that has a Dockerfile — from your laptop, with one command.
+            </p>
+          </header>
+
+          <section id="overview" class="step-card mb-10">
+            <div class="section-label mb-3">Before you start</div>
+            <ul class="space-y-3 m-0 p-0 list-none">
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  >A Linux VPS with
+                  <strong class="font-medium text-sand-900 dark:text-sand-100">Docker Engine</strong>
+                  installed</span
+                >
+              </li>
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  >A domain for the Rivet console (e.g.
+                  <code class="mono-inline">rivet.example.com</code>) pointed at the VPS with ports
+                  <strong class="font-medium text-sand-900 dark:text-sand-100">80</strong> and
+                  <strong class="font-medium text-sand-900 dark:text-sand-100">443</strong> open.
+                  App domains you ship later use the same VPS IP — see Step 6.</span
+                >
+              </li>
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  >An app with a
+                  <code class="mono-inline">Dockerfile</code> in its project root</span
+                >
+              </li>
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  >Your local machine needs
+                  <strong class="font-medium text-sand-900 dark:text-sand-100">Docker</strong> too
+                  — the CLI builds the image before uploading it</span
+                >
+              </li>
+            </ul>
+          </section>
+
+          <section id="vps" class="docs-step">
+            <div class="section-label mb-2">Step 01</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Prepare your VPS</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Rivet runs on the server through Docker. Install Docker Engine on your VPS if you
+              haven't already — Rivet does not install it for you.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Follow the official guide for your distro:
+              <a
+                href="https://docs.docker.com/engine/install/"
+                rel="noopener noreferrer"
+                class="text-sand-900 dark:text-sand-100 underline underline-offset-2 decoration-sand-300 dark:decoration-sand-600 hover:decoration-sand-500"
+                >docs.docker.com/engine/install</a
+              >. Then confirm it works:
+            </p>
+            <pre class="code-block"><code>docker run hello-world</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              Point your Rivet domain's DNS A record at the VPS IP. Rivet uses Caddy to provision
+              HTTPS automatically once the install finishes.
+            </p>
+          </section>
+
+          <section id="install" class="docs-step">
+            <div class="section-label mb-2">Step 02</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Install the Rivet control plane</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              SSH into your VPS and run the installer. It pulls three containers — Caddy (routing +
+              SSL), the Rivet API server, and the web console — and wires them together on a shared
+              Docker network.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Interactive install (the script will prompt for your domain and secret key):
+            </p>
+            <pre class="code-block"><code>curl -fsSL https://getrivet.app/install.sh | sh</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-5">
+              Or pass everything up front for a non-interactive install:
+            </p>
+            <pre class="code-block"><code>curl -fsSL https://getrivet.app/install.sh | \
+  RIVET_DOMAIN=rivet.example.com \
+  RIVET_SECRET_KEY=$(openssl rand -hex 32) \
+  RIVET_INTERACTIVE=0 \
+  sh</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              When it finishes, open
+              <code class="mono-inline">https://rivet.example.com</code> — you should see the Rivet
+              console. The secret key encrypts project secrets at rest; store it somewhere safe.
+            </p>
+          </section>
+
+          <section id="cli" class="docs-step">
+            <div class="section-label mb-2">Step 03</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Install the Rivet CLI</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              The CLI runs on your laptop (or CI machine). It signs you in, builds your Docker
+              image locally, uploads it to your Rivet server, and triggers a deploy.
+            </p>
+            <p class="text-sm font-semibold text-sand-900 dark:text-sand-100 mb-2">
+              Option A — download a release
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Grab the latest binary for your OS from
+              <a
+                href="https://github.com/devmin8/rivet/releases"
+                rel="noopener noreferrer"
+                class="text-sand-900 dark:text-sand-100 underline underline-offset-2 decoration-sand-300 dark:decoration-sand-600 hover:decoration-sand-500"
+                >GitHub Releases</a
+              >, rename it to <code class="mono-inline">rivet</code>, and put it on your
+              <code class="mono-inline">PATH</code>.
+            </p>
+            <p class="text-sm font-semibold text-sand-900 dark:text-sand-100 mb-2">
+              Option B — build from source
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Requires Go 1.25+:
+            </p>
+            <pre class="code-block"><code>git clone https://github.com/devmin8/rivet.git
+cd rivet
+go build -o rivet ./cmd/rivetctl
+sudo mv rivet /usr/local/bin/</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-5">
+              Point the CLI at your Rivet server:
+            </p>
+            <pre class="code-block"><code>export RIVET_SERVER_URL=https://rivet.example.com</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              Add that line to your shell profile so you don't have to set it every session.
+            </p>
+          </section>
+
+          <section id="account" class="docs-step">
+            <div class="section-label mb-2">Step 04</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Create an account and sign in</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              The first user you create becomes the admin. You can sign up from the web console or
+              the CLI — pick whichever is easier.
+            </p>
+            <p class="text-sm font-semibold text-sand-900 dark:text-sand-100 mb-2">From the CLI</p>
+            <pre class="code-block"><code>rivet signup
+<span class="comment"># Username, email, password — then you're signed in automatically</span>
+
+rivet signin
+<span class="comment"># Use this on later sessions</span></code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              Your session is saved locally. Once signed in, you're ready to deploy.
+            </p>
+          </section>
+
+          <section id="dockerfile" class="docs-step">
+            <div class="section-label mb-2">Step 05</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Add a Dockerfile to your app</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Rivet builds and runs your app from a
+              <code class="mono-inline">Dockerfile</code> in the project directory. When you ship,
+              the CLI runs <code class="mono-inline">docker build</code> locally, uploads the
+              image, and Rivet starts the container on your VPS.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              A minimal example for a Node app:
+            </p>
+            <pre class="code-block"><code>FROM node:22-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY . .
+EXPOSE 3000
+CMD ["node", "server.js"]</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              Make sure the port you expose matches the port you'll tell Rivet when creating the
+              project. Rivet routes HTTPS traffic to that container port.
+            </p>
+          </section>
+
+          <section id="ship" class="docs-step">
+            <div class="section-label mb-2">Step 06</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Ship your app</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              From your app directory, run:
+            </p>
+            <pre class="code-block"><code>cd my-app
+rivet ship</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-5">
+              The CLI walks you through a short setup:
+            </p>
+            <ol class="space-y-2 text-sm text-sand-600 dark:text-sand-400 leading-relaxed m-0 pl-5">
+              <li>
+                <strong class="font-medium text-sand-900 dark:text-sand-100">New or existing project</strong>
+                — choose <code class="mono-inline">new</code> for your first deploy
+              </li>
+              <li>
+                <strong class="font-medium text-sand-900 dark:text-sand-100">Name</strong> — a label
+                for the project (e.g. <code class="mono-inline">api</code>)
+              </li>
+              <li>
+                <strong class="font-medium text-sand-900 dark:text-sand-100">Domain</strong> — the
+                public URL for this app (e.g.
+                <code class="mono-inline">api.example.com</code>)
+              </li>
+              <li>
+                <strong class="font-medium text-sand-900 dark:text-sand-100">Port</strong> — the
+                port your container listens on (e.g. <code class="mono-inline">3000</code>)
+              </li>
+              <li>
+                <strong class="font-medium text-sand-900 dark:text-sand-100">Auto sleep</strong> —
+                optional idle timeout in seconds (minimum 60). Leave empty to keep the container
+                always running.
+              </li>
+            </ol>
+            <p class="text-sm font-semibold text-sand-900 dark:text-sand-100 mt-6 mb-2">
+              Point the domain at your VPS
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Rivet routes traffic by hostname on the same VPS where the control plane runs. The
+              domain you enter must resolve to that server's IP — the same way your Rivet console
+              domain does. Once DNS is in place, Caddy provisions HTTPS and sends requests to your
+              container.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-3">
+              Pick whichever fits your setup:
+            </p>
+            <ul class="space-y-3 text-sm text-sand-600 dark:text-sand-400 leading-relaxed m-0 p-0 list-none mb-5">
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  ><strong class="font-medium text-sand-900 dark:text-sand-100">Wildcard</strong>
+                  — one record for all subdomains:
+                  <code class="mono-inline">*.example.com</code> → A → your VPS IP. Ship
+                  <code class="mono-inline">api.example.com</code>,
+                  <code class="mono-inline">staging.example.com</code>, and so on without touching
+                  DNS again.</span
+                >
+              </li>
+              <li class="checklist-item">
+                <span class="font-mono text-[11px] text-sand-900 dark:text-sand-100 shrink-0 mt-0.5"
+                  >→</span
+                >
+                <span
+                  ><strong class="font-medium text-sand-900 dark:text-sand-100"
+                    >Per-app record</strong
+                  >
+                  — add an A record for each domain:
+                  <code class="mono-inline">api.example.com</code> → A → your VPS IP.</span
+                >
+              </li>
+            </ul>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-5">
+              Then Rivet builds the image, uploads it, and deploys. When it's done, your app is live
+              at the domain you chose — with HTTPS handled automatically.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Deploying again to the same project? Run
+              <code class="mono-inline">rivet ship</code>, choose
+              <code class="mono-inline">existing</code>, and enter the project ID.
+            </p>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-0">
+              On an ARM VPS, pass the target platform:
+              <code class="mono-inline">rivet ship --platform linux/arm64</code>
+            </p>
+          </section>
+
+          <section id="env" class="docs-step">
+            <div class="section-label mb-2">Optional</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">Environment variables</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              If your project has a <code class="mono-inline">.env</code> file, Rivet imports it
+              automatically during <code class="mono-inline">rivet ship</code> before deploy. Add
+              <code class="mono-inline">.env</code> to <code class="mono-inline">.dockerignore</code>
+              so Docker does not copy those values into your image.
+            </p>
+            <pre class="code-block"><code>DATABASE_URL=postgres://localhost/mydb
+RIVET_SECRET_API_KEY=sk_live_abc123</code></pre>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mt-5 mb-0">
+              Regular keys become plain env vars. Keys prefixed with
+              <code class="mono-inline">RIVET_SECRET_</code> are stored encrypted — the prefix is
+              stripped before injection. You can also manage env vars and secrets from the web
+              console at any time.
+            </p>
+          </section>
+
+          <section id="next" class="docs-step">
+            <div class="section-label mb-2">After your first deploy</div>
+            <h2 class="text-xl font-bold tracking-tight mb-3">What's next</h2>
+            <p class="text-sm text-sand-600 dark:text-sand-400 leading-relaxed mb-5">
+              Open the Rivet console at your server domain to monitor CPU, memory, and network for
+              each project. Start, stop, redeploy, and edit env vars from the dashboard — or keep
+              using the CLI.
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <a href="/" class="btn-primary">Back to home</a>
+              <a
+                href="https://github.com/devmin8/rivet"
+                rel="noopener noreferrer"
+                class="btn-ghost"
+                >View source on GitHub</a
+              >
+            </div>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer class="border-t border-sand-200 dark:border-sand-800 mt-6">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a
+            href="/"
+            aria-label="Rivet home"
+            class="flex items-center gap-2 text-sand-900 dark:text-sand-100 no-underline"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
+              class="shrink-0"
+            >
+              <rect
+                x="2"
+                y="13"
+                width="16"
+                height="4"
+                rx="2"
+                class="fill-sand-900 dark:fill-sand-100"
+                opacity="0.25"
+              />
+              <rect
+                x="2"
+                y="8"
+                width="16"
+                height="4"
+                rx="2"
+                class="fill-sand-900 dark:fill-sand-100"
+                opacity="0.55"
+              />
+              <rect
+                x="2"
+                y="3"
+                width="16"
+                height="4"
+                rx="2"
+                class="fill-sand-900 dark:fill-sand-100"
+              />
+            </svg>
+            <span class="font-mono font-semibold text-sm tracking-tighter">rivet</span>
+          </a>
+          <span class="text-xs text-sand-600 dark:text-sand-400">© 2026 · MIT License</span>
+        </div>
+        <nav aria-label="Footer navigation" class="flex flex-wrap gap-x-5 gap-y-2">
+          <a
+            href="https://github.com/devmin8/rivet"
+            rel="noopener noreferrer"
+            class="text-xs text-sand-600 hover:text-sand-700 dark:text-sand-400 dark:hover:text-sand-200 transition-colors"
+            >GitHub</a
+          >
+          <a
+            href="/docs.html"
+            class="text-xs text-sand-600 hover:text-sand-700 dark:text-sand-400 dark:hover:text-sand-200 transition-colors"
+            >Docs</a
+          >
+          <a
+            href="/#roadmap"
+            class="text-xs text-sand-600 hover:text-sand-700 dark:text-sand-400 dark:hover:text-sand-200 transition-colors"
+            >Roadmap</a
+          >
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
