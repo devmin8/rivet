@@ -206,7 +206,7 @@ jobs:
           go build -ldflags "$LDFLAGS" -o "rivetctl-${{ matrix.suffix }}" ./cmd/rivetctl
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rivetctl-${{ matrix.suffix }}
           path: rivetctl-${{ matrix.suffix }}
@@ -222,8 +222,9 @@ jobs:
           ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
+          pattern: rivetctl-*
           path: artifacts
           merge-multiple: true
 

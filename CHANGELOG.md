@@ -18,5 +18,6 @@ All notable changes to this project will be documented in this file.
 - **Web dashboard** — Sign in, list projects, create/deploy/start/stop/delete apps, manage env vars and secrets, and configure auto-sleep.
 - **CLI (`rivetctl`)** — `signin`, `signup`, `ship`, `delete`, and `version`. `ship` builds the local Dockerfile for `linux/amd64` or `linux/arm64`, uploads the image, imports `.env`, and deploys.
 - **Cross-platform CLI releases** — GitHub Actions workflow to build and publish `rivetctl` binaries for Linux, macOS, and Windows (amd64/arm64 where applicable) with checksums.
+- **Release artifact filtering** — GitHub Release publishing attaches only `rivetctl-*` binaries and checksums.
 - **Container images** — Server and console images published to GHCR with version, `latest`, and `sha-<commit>` tags, plus provenance, SBOM, and artifact attestations.
 - **Marketing site and docs** — Public site at `getrivet.app` with install guide, feature overview, and dark mode.
