@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <script>
+      ;(function () {
+        var root = document.documentElement
+        try {
+          var stored = localStorage.getItem('rivet-theme')
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          var useDark = stored === 'dark' || (!stored && prefersDark)
+          root.classList.toggle('dark', useDark)
+          root.style.colorScheme = useDark ? 'dark' : 'light'
+        } catch {}
+      })()
+    </script>
+
+    <style>
+      html {
+        color-scheme: light;
+        background-color: #fcfcfc;
+        color: #1a1a1a;
+        font-family: 'Geist', system-ui, sans-serif;
+      }
+      html.dark {
+        color-scheme: dark;
+        background-color: #111111;
+        color: #fcfcfc;
+      }
+    </style>
+
+    <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/geist-mono-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <title>Page Not Found - Rivet</title>
+    <meta
+      name="description"
+      content="The Rivet page you were looking for does not exist or has moved."
+    />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#FCFCFC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+  </head>
+
+  <body
+    class="min-h-screen bg-sand-50 dark:bg-sand-950 text-sand-900 dark:text-sand-100 font-sans"
+  >
+    <header
+      class="sticky top-0 z-50 bg-sand-50/95 dark:bg-sand-950/95 backdrop-blur-sm border-b border-sand-200/50 dark:border-sand-800/50"
+    >
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <a
+          href="/"
+          aria-label="Rivet home"
+          class="flex items-center gap-2.5 text-sand-900 dark:text-sand-100 no-underline"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+            class="shrink-0"
+          >
+            <rect
+              x="2"
+              y="13"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+              opacity="0.25"
+            />
+            <rect
+              x="2"
+              y="8"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+              opacity="0.55"
+            />
+            <rect
+              x="2"
+              y="3"
+              width="16"
+              height="4"
+              rx="2"
+              class="fill-sand-900 dark:fill-sand-100"
+            />
+          </svg>
+          <span class="font-mono font-semibold text-[15px] tracking-tighter leading-none"
+            >rivet</span
+          >
+        </a>
+
+        <nav aria-label="Main navigation" class="hidden sm:flex items-center gap-6">
+          <a href="/#features" class="nav-link">Features</a>
+          <a href="/#how-it-works" class="nav-link">How it works</a>
+          <a href="/docs.html" class="nav-link">Docs</a>
+          <a href="https://github.com/devmin8/rivet" rel="noopener noreferrer" class="nav-link"
+            >GitHub</a
+          >
+        </nav>
+
+        <button
+          id="themeToggle"
+          type="button"
+          aria-label="Toggle light/dark theme"
+          class="ml-4 w-8 h-8 rounded-md flex items-center justify-center text-sand-400 hover:text-sand-900 dark:hover:text-sand-100 hover:bg-sand-100 dark:hover:bg-sand-800 transition-colors duration-150"
+        >
+          <svg
+            class="hidden dark:block w-[15px] h-[15px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg
+            class="block dark:hidden w-[15px] h-[15px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="min-h-[calc(100vh-3.5rem)] flex items-center">
+      <section class="max-w-6xl mx-auto w-full px-4 sm:px-6 py-16 sm:py-24">
+        <div
+          class="grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] gap-12 lg:gap-16 items-center"
+        >
+          <div class="max-w-2xl">
+            <p class="section-label mb-4">404 / not found</p>
+            <h1
+              class="text-[clamp(2.6rem,7vw,5.75rem)] font-extrabold leading-[0.95] tracking-[-0.03em] mb-6"
+            >
+              This route is not deployed.
+            </h1>
+            <p class="text-base sm:text-lg text-sand-600 dark:text-sand-400 leading-relaxed mb-8">
+              The page may have moved, the URL may be mistyped, or this environment has not shipped
+              that path yet.
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <a href="/" class="btn-primary">Back to home</a>
+              <a href="/docs.html" class="btn-ghost">Read the docs</a>
+            </div>
+          </div>
+
+          <div
+            class="rounded-xl overflow-hidden border border-sand-800/60 dark:border-sand-700/50 shadow-2xl shadow-sand-950/10 dark:shadow-sand-950/50 bg-[#141210]"
+            aria-hidden="true"
+          >
+            <div class="bg-[#1C1A18] px-4 py-3 flex items-center gap-2 border-b border-white/5">
+              <span class="w-3 h-3 rounded-full bg-[#FF5F57]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#FFBD2E]"></span>
+              <span class="w-3 h-3 rounded-full bg-[#28C840]"></span>
+              <span class="ml-3 font-mono text-[11px] text-white/60 select-none"
+                >rivet - route lookup</span
+              >
+            </div>
+            <div class="font-mono text-[12px] leading-[1.8] text-zinc-300 p-5 sm:p-6">
+              <div>
+                <span class="text-emerald-500">edge</span><span class="text-zinc-400">:</span
+                ><span class="text-sky-400">routes</span><span class="text-zinc-400">$ </span
+                ><span class="text-zinc-200">rivet resolve request</span>
+              </div>
+              <div class="mt-5 text-zinc-400">status: <span class="text-amber-300">404</span></div>
+              <div class="text-zinc-400">
+                match: <span class="text-zinc-200">none</span>
+              </div>
+              <div class="text-zinc-400">
+                fallback: <span class="text-emerald-400">custom error page</span>
+              </div>
+              <div class="mt-5 text-zinc-500">Return to a known route and keep shipping.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

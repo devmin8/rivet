@@ -8,6 +8,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         docs: 'docs.html',
+        notFound: '404.html',
       },
     },
   },
