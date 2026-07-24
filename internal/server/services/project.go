@@ -303,6 +303,9 @@ func (s *ProjectService) DeleteProject(ctx context.Context, id string, userID st
 	if err := s.docker.RemoveContainer(ctx, project.ContainerName); err != nil {
 		return err
 	}
+	if err := s.docker.RemoveProjectVolumes(ctx, project.ID); err != nil {
+		return err
+	}
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("project_id = ?", id).Delete(&database.ProjectEnvVar{}).Error; err != nil {

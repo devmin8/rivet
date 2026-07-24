@@ -2,14 +2,18 @@ package docker
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
 	dockerclient "github.com/moby/moby/client"
 )
@@ -174,6 +178,11 @@ func (c *Client) StartContainer(ctx context.Context, containerName string, proje
 		return "", err
 	}
 
+	mounts, err := c.declaredVolumeMounts(ctx, projectID, image)
+	if err != nil {
+		return "", err
+	}
+
 	created, err := c.api.ContainerCreate(ctx, dockerclient.ContainerCreateOptions{
 		Name: containerName,
 		Config: &container.Config{
@@ -191,6 +200,9 @@ func (c *Client) StartContainer(ctx context.Context, containerName string, proje
 					Aliases: []string{containerName},
 				},
 			},
+		},
+		HostConfig: &container.HostConfig{
+			Mounts: mounts,
 		},
 	})
 	if err != nil {
@@ -221,6 +233,29 @@ func (c *Client) RemoveContainer(ctx context.Context, containerName string) erro
 	return nil
 }
 
+// RemoveProjectVolumes deletes Rivet-managed named volumes for a project.
+func (c *Client) RemoveProjectVolumes(ctx context.Context, projectID string) error {
+	volumes, err := c.api.VolumeList(ctx, dockerclient.VolumeListOptions{
+		Filters: make(dockerclient.Filters).
+			Add("label", "rivet.managed=true").
+			Add("label", "rivet.project_id="+projectID),
+	})
+	if err != nil {
+		return fmt.Errorf("list docker volumes: %w", err)
+	}
+
+	for _, volume := range volumes.Items {
+		if _, err := c.api.VolumeRemove(ctx, volume.Name, dockerclient.VolumeRemoveOptions{Force: true}); err != nil {
+			if cerrdefs.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("remove docker volume: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // InspectContainer reads the container ID, image, and running state for a project container.
 func (c *Client) InspectContainer(ctx context.Context, containerName string) (ContainerInfo, error) {
 	res, err := c.api.ContainerInspect(ctx, containerName, dockerclient.ContainerInspectOptions{})
@@ -242,6 +277,65 @@ func (c *Client) InspectContainer(ctx context.Context, containerName string) (Co
 	}
 
 	return info, nil
+}
+
+func (c *Client) declaredVolumeMounts(ctx context.Context, projectID string, image string) ([]mount.Mount, error) {
+	paths, err := c.declaredVolumePaths(ctx, image)
+	if err != nil {
+		return nil, err
+	}
+
+	mounts := make([]mount.Mount, 0, len(paths))
+	for _, target := range paths {
+		name := projectVolumeName(projectID, target)
+		_, err := c.api.VolumeCreate(ctx, dockerclient.VolumeCreateOptions{
+			Name:   name,
+			Driver: "local",
+			Labels: map[string]string{
+				"rivet.project_id":    projectID,
+				"rivet.volume_target": target,
+				"rivet.volume_name":   name,
+				"rivet.managed":       "true",
+			},
+		})
+		if err != nil && !cerrdefs.IsAlreadyExists(err) && !cerrdefs.IsConflict(err) {
+			return nil, fmt.Errorf("create docker volume: %w", err)
+		}
+
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: name,
+			Target: target,
+		})
+	}
+
+	return mounts, nil
+}
+
+func (c *Client) declaredVolumePaths(ctx context.Context, image string) ([]string, error) {
+	res, err := c.api.ImageInspect(ctx, image)
+	if err != nil {
+		if cerrdefs.IsNotFound(err) {
+			return nil, ErrContainerNotFound
+		}
+		return nil, fmt.Errorf("inspect docker image: %w", err)
+	}
+	if res.Config == nil || len(res.Config.Volumes) == 0 {
+		return nil, nil
+	}
+
+	paths := make([]string, 0, len(res.Config.Volumes))
+	for target := range res.Config.Volumes {
+		paths = append(paths, target)
+	}
+	sort.Strings(paths)
+
+	return paths, nil
+}
+
+func projectVolumeName(projectID string, target string) string {
+	sum := sha256.Sum256([]byte(target))
+	return "rivet-" + projectID + "-" + hex.EncodeToString(sum[:])[:12]
 }
 
 // ContainerStats returns one immediate Docker stats sample for a running container.
