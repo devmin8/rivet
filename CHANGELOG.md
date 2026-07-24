@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-24
+
 ### Added
 
 - **Persistent Dockerfile volumes** — Rivet now honors image-declared `VOLUME` paths with stable per-project Docker volumes so app data survives redeploys.
